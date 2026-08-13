@@ -83,35 +83,33 @@ function MorrowAccess({onClose,onReady}:{onClose:()=>void;onReady:()=>void}) {
   const [email,setEmail] = useState("");
   const [name,setName] = useState("");
   const [storeName,setStoreName] = useState("");
-  const [session,setSession] = useState<MorrowSession | null>(null);
+  const [session,setSession] = useState<MorrowSession | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = window.localStorage.getItem(SESSION_KEY);
+      return saved ? JSON.parse(saved) as MorrowSession : null;
+    } catch { return null; }
+  });
   const [message,setMessage] = useState("");
   const [busy,setBusy] = useState(false);
 
   useEffect(() => {
     if (!SUPABASE_URL || !SUPABASE_KEY) return;
-    const params = new URLSearchParams(window.location.hash.slice(1));
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token") || undefined;
-    if (accessToken) {
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-      getUser(accessToken, refreshToken).catch(() => setMessage("That sign-in link has expired. Request a fresh one and try again."));
-      return;
+    const accessToken = new URLSearchParams(window.location.hash.slice(1)).get("access_token");
+    if (!accessToken) return;
+    const refreshToken = new URLSearchParams(window.location.hash.slice(1)).get("refresh_token") || undefined;
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    async function verifyMagicLink() {
+      const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders(accessToken) });
+      if (!response.ok) throw new Error("Could not verify session");
+      const user = await response.json() as MorrowSession["user"];
+      const next = {access_token:accessToken, refresh_token:refreshToken, user};
+      window.localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+      setSession(next);
+      setMessage("You’re signed in. Give your store a name to begin.");
     }
-    try {
-      const saved = window.localStorage.getItem(SESSION_KEY);
-      if (saved) setSession(JSON.parse(saved) as MorrowSession);
-    } catch { /* A browser may block saved sessions; email sign-in still works. */ }
+    void verifyMagicLink().catch(() => setMessage("That sign-in link has expired. Request a fresh one and try again."));
   }, []);
-
-  async function getUser(accessToken:string, refreshToken?:string) {
-    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders(accessToken) });
-    if (!response.ok) throw new Error("Could not verify session");
-    const user = await response.json() as MorrowSession["user"];
-    const next = {access_token:accessToken, refresh_token:refreshToken, user};
-    window.localStorage.setItem(SESSION_KEY, JSON.stringify(next));
-    setSession(next);
-    setMessage("You’re signed in. Give your store a name to begin.");
-  }
 
   async function sendMagicLink(event:FormEvent) {
     event.preventDefault();
@@ -149,7 +147,7 @@ function MorrowAccess({onClose,onReady}:{onClose:()=>void;onReady:()=>void}) {
     finally { setBusy(false); }
   }
 
-  return <div className="access-backdrop" role="dialog" aria-modal="true" aria-labelledby="morrow-access-title"><section className="access-card"><button className="access-close" onClick={onClose} aria-label="Close">×</button><span className="brand-mark">m</span>{!session ? <><p className="section-kicker">YOUR MORROW ACCOUNT</p><h2 id="morrow-access-title">Start with your<br/><em>email.</em></h2><p className="access-copy">No password to remember. We’ll send a secure sign-in link.</p><form onSubmit={sendMagicLink}><label>Your name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Maya Patel" autoComplete="name" /></label><label>Email address<input value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required /></label><button className="button" disabled={busy}>{busy ? "Sending your link…" : "Email me a sign-in link →"}</button></form></> : <><p className="section-kicker">WELCOME TO MORROW</p><h2 id="morrow-access-title">What should we<br/><em>call your store?</em></h2><p className="access-copy">This is the start of your own private workspace.</p><form onSubmit={createStore}><label>Store name<input value={storeName} onChange={e=>setStoreName(e.target.value)} placeholder="Moss & Marrow" autoFocus required /></label><button className="button" disabled={busy}>{busy ? "Creating your store…" : "Create my store →"}</button></form></>}{message && <p className="access-message" role="status">{message}</p>}</section></div>;
+  return <div className="access-backdrop" role="dialog" aria-modal="true" aria-labelledby="morrow-access-title"><section className="access-card"><button className="access-close" onClick={onClose} aria-label="Close">×</button><span className="brand-mark">m</span>{!session ? <><p className="section-kicker">YOUR MORROW ACCOUNT</p><h2 id="morrow-access-title">Start with your<br/><em>email.</em></h2><p className="access-copy">No password to remember. We’ll send a secure sign-in link.</p><form onSubmit={sendMagicLink}><label>Your name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Maya Patel" autoComplete="name" /></label><label>Email address<input value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" required /></label><button className="button" disabled={busy}>{busy ? "Sending your link…" : "Email me a sign-in link →"}</button></form></> : <><p className="section-kicker">WELCOME TO MORROW</p><h2 id="morrow-access-title">What should we<br/><em>call your store?</em></h2><p className="access-copy">This is the start of your own private workspace.</p><form onSubmit={createStore}><label>Store name<input value={storeName} onChange={e=>setStoreName(e.target.value)} placeholder="Moss & Marrow" required /></label><button className="button" disabled={busy}>{busy ? "Creating your store…" : "Create my store →"}</button></form></>}{message && <p className="access-message" role="status">{message}</p>}</section></div>;
 }
 
 function authHeaders(accessToken:string) { return {apikey:SUPABASE_KEY || "", Authorization:`Bearer ${accessToken}`}; }
