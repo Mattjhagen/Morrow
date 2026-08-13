@@ -44,6 +44,10 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    // The generated storefront stylesheet can stall Vite 8 during browser
+    // minification. Keep release builds deterministic; static compression is
+    // handled by the hosting edge.
+    build: { minify: false, cssMinify: false },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
