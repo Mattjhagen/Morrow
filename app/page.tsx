@@ -710,7 +710,6 @@ function MorrowAccess({
           Prefer: "return=representation",
         },
         body: JSON.stringify({
-          owner_id: session.user.id,
           name: storeName.trim(),
           handle,
         }),
