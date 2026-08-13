@@ -622,6 +622,7 @@ function MorrowAccess({
       "access_token",
     );
     if (!accessToken) return;
+    const verifiedAccessToken = accessToken;
     const refreshToken =
       new URLSearchParams(window.location.hash.slice(1)).get("refresh_token") ||
       undefined;
@@ -632,12 +633,12 @@ function MorrowAccess({
     );
     async function verifyMagicLink() {
       const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-        headers: authHeaders(accessToken),
+        headers: authHeaders(verifiedAccessToken),
       });
       if (!response.ok) throw new Error("Could not verify session");
       const user = (await response.json()) as MorrowSession["user"];
       const next = {
-        access_token: accessToken,
+        access_token: verifiedAccessToken,
         refresh_token: refreshToken,
         user,
       };
@@ -707,7 +708,6 @@ function MorrowAccess({
         headers: {
           ...authHeaders(session.access_token),
           "Content-Type": "application/json",
-          Prefer: "return=representation",
         },
         body: JSON.stringify({
           name: storeName.trim(),
