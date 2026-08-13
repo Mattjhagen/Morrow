@@ -22,6 +22,12 @@ export default function Home() {
     window.setTimeout(() => setNotice(""), 2500);
   };
 
+  // Magic links return to the landing page. Reopen the account panel so the
+  // returned session can be verified and the merchant can name their store.
+  useEffect(() => {
+    if (window.location.hash.includes("access_token=")) setAccessOpen(true);
+  }, []);
+
   if (screen === "dashboard")
     return (
       <Dashboard
