@@ -1,4 +1,30 @@
-// Intentionally empty by default.
-// Add Drizzle tables here when the site actually needs a database.
-// See examples/d1/db/schema.ts for an opt-in example.
-export {};
+/**
+ * Morrow's production data model lives in Supabase Postgres.
+ *
+ * The canonical migration is `supabase/migrations/20260813000000_morrow_foundation.sql`.
+ * Keeping these types here documents the tenant boundary used by every later commerce
+ * table: every store-owned record must have a `store_id` and be protected by membership.
+ */
+export type StoreRole = "owner" | "admin" | "staff";
+
+export type MorrowProfile = {
+  id: string;
+  email: string | null;
+  fullName: string | null;
+  createdAt: string;
+};
+
+export type MorrowStore = {
+  id: string;
+  ownerId: string;
+  name: string;
+  handle: string;
+  createdAt: string;
+};
+
+export type StoreMembership = {
+  storeId: string;
+  userId: string;
+  role: StoreRole;
+  createdAt: string;
+};
