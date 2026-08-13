@@ -9,22 +9,30 @@ async function render() {
 
   return worker.fetch(
     new Request("http://localhost/", { headers: { accept: "text/html" } }),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    {
+      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+    },
     { waitUntil() {}, passThroughOnException() {} },
   );
 }
 
-test("server-renders the Morrow storefront", async () => {
+test("server-renders the Velour storefront", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Morrow — Make a living from what you love making<\/title>/);
+  assert.match(
+    html,
+    /<title>Velour — Make a living from what you love making<\/title>/,
+  );
   assert.match(html, /Your store\. <em>Ready before<\/em> lunch\./);
   assert.match(html, /Make my store/);
   assert.match(html, /Start my free 14 days/);
-  assert.match(html, /Morrow is the calmest way to launch and run your store\./);
+  assert.match(
+    html,
+    /Velour is the calmest way to launch and run your store\./,
+  );
   assert.doesNotMatch(html, /Your site is taking shape|Building your site/i);
 });
 
@@ -35,15 +43,18 @@ test("keeps the passwordless sign-in flow wired to public Supabase configuration
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
   ]);
 
-  assert.match(layout, /title:\s*"Morrow — Make a living from what you love making"/);
+  assert.match(
+    layout,
+    /title:\s*"Velour — Make a living from what you love making"/,
+  );
   assert.match(envExample, /^NEXT_PUBLIC_SUPABASE_URL=/m);
   assert.match(envExample, /^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/m);
   assert.match(page, /process\.env\.NEXT_PUBLIC_SUPABASE_URL/);
   assert.match(page, /process\.env\.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.match(page, /\/auth\/v1\/otp/);
-  assert.match(page, /method:"POST"/);
-  assert.match(page, /create_user:true/);
-  assert.match(page, /email_redirect_to:window\.location\.origin/);
+  assert.match(page, /method:\s*"POST"/);
+  assert.match(page, /create_user:\s*true/);
+  assert.match(page, /email_redirect_to:\s*window\.location\.origin/);
   assert.match(page, /\/auth\/v1\/user/);
   assert.match(page, /window\.history\.replaceState/);
   assert.match(page, /\/rest\/v1\/stores/);
