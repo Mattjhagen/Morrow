@@ -2,25 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import StoreDashboard from "./dashboard/StoreDashboard";
-const nav = [
-  "Overview",
-  "Orders",
-  "Products",
-  "Customers",
-  "Marketing",
-  "Sales channels",
-];
-const management = ["Analytics", "Domains", "Integrations", "Settings"];
 
 export default function Home() {
   const [screen, setScreen] = useState<"home" | "dashboard">("home");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [notice, setNotice] = useState("");
   const [accessOpen, setAccessOpen] = useState(false);
-  const toast = (text: string) => {
-    setNotice(text);
-    window.setTimeout(() => setNotice(""), 2500);
-  };
 
   // Magic links return to the landing page. Reopen the account panel so the
   // returned session can be verified and the merchant can name their store.
@@ -30,10 +16,9 @@ export default function Home() {
 
   if (screen === "dashboard")
     return (
-      <Dashboard
+      <StoreDashboard
         onBack={() => setScreen("home")}
-        toast={toast}
-        notice={notice}
+        onSignedOut={() => setScreen("home")}
       />
     );
 
@@ -342,244 +327,6 @@ function MiniDashboard() {
           <button>Draft email →</button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Dashboard({
-  onBack,
-  toast,
-  notice,
-}: {
-  onBack: () => void;
-  toast: (x: string) => void;
-  notice: string;
-}) {
-  const [active, setActive] = useState("Overview");
-  const [tour, setTour] = useState(true);
-  return (
-    <main className="admin-shell">
-      <aside className="sidebar">
-        <button className="brand" onClick={onBack}>
-          <span className="brand-mark">m</span>morrow
-        </button>
-        <div className="store-switch">
-          <span className="store-dot">J</span>
-          <div>
-            <b>Juniper Studio</b>
-            <small>juniper.morrow.live</small>
-          </div>
-          <span>⌄</span>
-        </div>
-        <div className="side-nav">
-          {nav.map((x) => (
-            <button
-              className={active === x ? "selected" : ""}
-              key={x}
-              onClick={() => {
-                setActive(x);
-                toast(`${x} is ready when you are.`);
-              }}
-            >
-              {x}
-            </button>
-          ))}
-          <hr />
-          {management.map((x) => (
-            <button
-              className={active === x ? "selected" : ""}
-              key={x}
-              onClick={() => {
-                setActive(x);
-                toast(`${x} is ready when you are.`);
-              }}
-            >
-              {x}
-            </button>
-          ))}
-        </div>
-        <div className="side-bottom">
-          <button onClick={() => toast("Your Morrow guide is here to help.")}>
-            ? &nbsp; Help &amp; guides
-          </button>
-          <button
-            className="profile"
-            onClick={() => toast("Account menu opened.")}
-          >
-            <span>MP</span>
-            <b>Maya Patel</b>
-            <i>⌄</i>
-          </button>
-        </div>
-      </aside>
-      <section className="admin-main">
-        <header className="admin-top">
-          <span>Monday, August 13</span>
-          <div>
-            <button onClick={() => toast("Notifications cleared.")}>◌</button>
-            <button className="view-store" onClick={onBack}>
-              View store ↗
-            </button>
-          </div>
-        </header>
-        <div className="content">
-          <div className="welcome">
-            <div>
-              <p className="section-kicker">YOUR DAILY OVERVIEW</p>
-              <h1>
-                Good morning, Maya <span>☀</span>
-              </h1>
-              <p>Here’s the lovely stuff happening with your shop.</p>
-            </div>
-            <button
-              className="button dark"
-              onClick={() => toast("Let’s add a new product.")}
-            >
-              + Add product
-            </button>
-          </div>
-          {tour && (
-            <div className="tour">
-              <button onClick={() => setTour(false)} aria-label="Close">
-                ×
-              </button>
-              <div className="tour-icon">✦</div>
-              <div>
-                <b>Your shop is looking good.</b>
-                <p>
-                  One small thing: add your first product to make your
-                  storefront feel like yours.
-                </p>
-              </div>
-              <button onClick={() => toast("Opening your product editor…")}>
-                Add a product →
-              </button>
-            </div>
-          )}
-          <div className="metrics">
-            <Metric label="SALES THIS WEEK" value="$1,284.00" trend="18%" />
-            <Metric label="ORDERS" value="32" trend="12%" />
-            <Metric label="VISITORS" value="1,452" trend="8%" />
-            <Metric label="CONVERSION" value="2.2%" trend="0.4%" />
-          </div>
-          <div className="admin-grid">
-            <section className="panel sales">
-              <div className="panel-heading">
-                <div>
-                  <h3>Sales over time</h3>
-                  <p>August 7 – August 13</p>
-                </div>
-                <button onClick={() => toast("Sales report opened.")}>
-                  View report →
-                </button>
-              </div>
-              <div className="big-chart">
-                <div className="ylabels">
-                  <span>$400</span>
-                  <span>$300</span>
-                  <span>$200</span>
-                  <span>$100</span>
-                  <span>$0</span>
-                </div>
-                <div className="chart-area">
-                  <div className="line" />
-                  <div className="chart-days">
-                    <span>Mon 7</span>
-                    <span>Tue 8</span>
-                    <span>Wed 9</span>
-                    <span>Thu 10</span>
-                    <span>Fri 11</span>
-                    <span>Sat 12</span>
-                    <span>Today</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-            <section className="panel orders">
-              <div className="panel-heading">
-                <div>
-                  <h3>Recent orders</h3>
-                  <p>Your newest sales, all in one place.</p>
-                </div>
-                <button onClick={() => toast("All orders opened.")}>
-                  View all →
-                </button>
-              </div>
-              {[
-                ["#1042", "Lena Rivers", "$68.00"],
-                ["#1041", "Sofia Chen", "$42.00"],
-                ["#1040", "Naomi Wood", "$96.00"],
-              ].map((o) => (
-                <div className="order" key={o[0]}>
-                  <span className="order-avatar">{o[1][0]}</span>
-                  <div>
-                    <b>
-                      {o[0]} · {o[1]}
-                    </b>
-                    <small>Just now</small>
-                  </div>
-                  <strong>{o[2]}</strong>
-                </div>
-              ))}
-            </section>
-          </div>
-          <div className="admin-grid lower">
-            <section className="panel nudge">
-              <span>✦</span>
-              <div>
-                <h3>Your next gentle nudge</h3>
-                <p>
-                  Your “Slow Sundays” collection is getting attention. A short
-                  email could turn those views into first orders.
-                </p>
-                <button onClick={() => toast("Your email draft is ready.")}>
-                  Draft an email →
-                </button>
-              </div>
-            </section>
-            <section className="panel products">
-              <div className="panel-heading">
-                <div>
-                  <h3>Low in stock</h3>
-                  <p>Keep an eye on these favorites.</p>
-                </div>
-                <button onClick={() => toast("Inventory opened.")}>
-                  Manage →
-                </button>
-              </div>
-              <div className="stock">
-                <span className="product-thumb" />
-                <div>
-                  <b>Cloud Mug, Oat</b>
-                  <small>4 left</small>
-                </div>
-                <button onClick={() => toast("Inventory updated.")}>
-                  Restock
-                </button>
-              </div>
-            </section>
-          </div>
-        </div>
-      </section>
-      {notice && <div className="toast">{notice}</div>}
-    </main>
-  );
-}
-function Metric({
-  label,
-  value,
-  trend,
-}: {
-  label: string;
-  value: string;
-  trend: string;
-}) {
-  return (
-    <div className="metric">
-      <small>{label}</small>
-      <b>{value}</b>
-      <span>↗ {trend}</span>
-      <em>vs. last week</em>
     </div>
   );
 }
