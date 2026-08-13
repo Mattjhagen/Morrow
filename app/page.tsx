@@ -37,9 +37,9 @@ export default function Home() {
         <button
           className="brand"
           onClick={() => setScreen("home")}
-          aria-label="Velour home"
+          aria-label="Morrow home"
         >
-          <span className="brand-mark">v</span>velour
+          <span className="brand-mark">m</span>morrow
         </button>
         <button
           className="menu-toggle"
@@ -49,7 +49,7 @@ export default function Home() {
           ☰
         </button>
         <nav className={menuOpen ? "nav open" : "nav"}>
-          <a href="#why">Why Velour</a>
+          <a href="#why">Why Morrow</a>
           <a href="#how">How it works</a>
           <a href="#pricing">Pricing</a>
           <button className="nav-login" onClick={() => setAccessOpen(true)}>
@@ -71,7 +71,7 @@ export default function Home() {
           </h1>
           <p>
             Meet the calmest way to sell online. Describe what you make, choose
-            a feeling, and Velour creates the shop around you.
+            a feeling, and Morrow creates the shop around you.
           </p>
           <div className="hero-actions">
             <button className="button" onClick={() => setAccessOpen(true)}>
@@ -94,7 +94,7 @@ export default function Home() {
             </span>
           </div>
         </div>
-        <div className="hero-art" aria-label="A preview of a Velour storefront">
+        <div className="hero-art" aria-label="A preview of a Morrow storefront">
           <div className="glow glow-one" />
           <div className="glow glow-two" />
           <div className="store-card">
@@ -122,7 +122,7 @@ export default function Home() {
             <span className="check">✓</span>
             <div>
               <b>Your shop is live</b>
-              <small>juniper.velour.live</small>
+              <small>juniper.morrow.live</small>
             </div>
           </div>
         </div>
@@ -142,7 +142,7 @@ export default function Home() {
           <em>More selling.</em>
         </h2>
         <p className="lead">
-          Velour sweeps away the busywork between a good idea and a beautiful
+          Morrow sweeps away the busywork between a good idea and a beautiful
           storefront. No tutorials. No 47-tab dashboard. Just a gentle path
           forward.
         </p>
@@ -166,7 +166,7 @@ export default function Home() {
           </div>
           <h3>Add your things</h3>
           <p>
-            Drop in a photo, price, and a thought. Velour handles inventory,
+            Drop in a photo, price, and a thought. Morrow handles inventory,
             collections, and the polished details.
           </p>
           <a href="#pricing">See products in action →</a>
@@ -176,7 +176,7 @@ export default function Home() {
           <div className="step-icon launch-icon">↗</div>
           <h3>Open the doors</h3>
           <p>
-            Connect a domain when you’re ready—or use your free Velour link.
+            Connect a domain when you’re ready—or use your free Morrow link.
             Payments are built in from the start.
           </p>
           <a href="#pricing">Explore checkout →</a>
@@ -265,13 +265,13 @@ export default function Home() {
 
       <footer>
         <button className="brand" onClick={() => setScreen("home")}>
-          <span className="brand-mark">v</span>velour
+          <span className="brand-mark">m</span>morrow
         </button>
         <p>Make a living from what you love making.</p>
-        <span>© 2026 Velour Commerce</span>
+        <span>© 2026 Morrow Commerce</span>
       </footer>
       {accessOpen && (
-        <VelourAccess
+        <MorrowAccess
           onClose={() => setAccessOpen(false)}
           onReady={() => {
             setAccessOpen(false);
@@ -287,7 +287,7 @@ function MiniDashboard() {
   return (
     <div className="mini-dash">
       <aside>
-        <b>velour</b>
+        <b>morrow</b>
         <span className="active">Overview</span>
         <span>Orders</span>
         <span>Products</span>
@@ -355,13 +355,13 @@ function Dashboard({
     <main className="admin-shell">
       <aside className="sidebar">
         <button className="brand" onClick={onBack}>
-          <span className="brand-mark">v</span>velour
+          <span className="brand-mark">m</span>morrow
         </button>
         <div className="store-switch">
           <span className="store-dot">J</span>
           <div>
             <b>Juniper Studio</b>
-            <small>juniper.velour.live</small>
+            <small>juniper.morrow.live</small>
           </div>
           <span>⌄</span>
         </div>
@@ -393,7 +393,7 @@ function Dashboard({
           ))}
         </div>
         <div className="side-bottom">
-          <button onClick={() => toast("Your Velour guide is here to help.")}>
+          <button onClick={() => toast("Your Morrow guide is here to help.")}>
             ? &nbsp; Help &amp; guides
           </button>
           <button
@@ -580,15 +580,15 @@ function Metric({
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const SESSION_KEY = "velour.supabase.session";
+const SESSION_KEY = "morrow.supabase.session";
 
-type VelourSession = {
+type MorrowSession = {
   access_token: string;
   refresh_token?: string;
   user: { id: string; email?: string };
 };
 
-function VelourAccess({
+function MorrowAccess({
   onClose,
   onReady,
 }: {
@@ -598,11 +598,11 @@ function VelourAccess({
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [storeName, setStoreName] = useState("");
-  const [session, setSession] = useState<VelourSession | null>(() => {
+  const [session, setSession] = useState<MorrowSession | null>(() => {
     if (typeof window === "undefined") return null;
     try {
       const saved = window.localStorage.getItem(SESSION_KEY);
-      return saved ? (JSON.parse(saved) as VelourSession) : null;
+      return saved ? (JSON.parse(saved) as MorrowSession) : null;
     } catch {
       return null;
     }
@@ -629,7 +629,7 @@ function VelourAccess({
         headers: authHeaders(accessToken),
       });
       if (!response.ok) throw new Error("Could not verify session");
-      const user = (await response.json()) as VelourSession["user"];
+      const user = (await response.json()) as MorrowSession["user"];
       const next = {
         access_token: accessToken,
         refresh_token: refreshToken,
@@ -650,7 +650,7 @@ function VelourAccess({
     event.preventDefault();
     if (!SUPABASE_URL || !SUPABASE_KEY) {
       setMessage(
-        "Velour sign-in is being configured. Please try again shortly.",
+        "Morrow sign-in is being configured. Please try again shortly.",
       );
       return;
     }
@@ -669,7 +669,7 @@ function VelourAccess({
       });
       if (!response.ok) throw new Error("Could not send sign-in email");
       setMessage(
-        "Check your inbox—your private Velour sign-in link is on its way.",
+        "Check your inbox—your private Morrow sign-in link is on its way.",
       );
     } catch {
       setMessage(
@@ -732,17 +732,17 @@ function VelourAccess({
       className="access-backdrop"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="velour-access-title"
+      aria-labelledby="morrow-access-title"
     >
       <section className="access-card">
         <button className="access-close" onClick={onClose} aria-label="Close">
           ×
         </button>
-        <span className="brand-mark">v</span>
+        <span className="brand-mark">m</span>
         {!session ? (
           <>
-            <p className="section-kicker">YOUR VELOUR ACCOUNT</p>
-            <h2 id="velour-access-title">
+            <p className="section-kicker">YOUR MORROW ACCOUNT</p>
+            <h2 id="morrow-access-title">
               Start with your
               <br />
               <em>email.</em>
@@ -778,8 +778,8 @@ function VelourAccess({
           </>
         ) : (
           <>
-            <p className="section-kicker">WELCOME TO VELOUR</p>
-            <h2 id="velour-access-title">
+            <p className="section-kicker">WELCOME TO MORROW</p>
+            <h2 id="morrow-access-title">
               What should we
               <br />
               <em>call your store?</em>

@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Velour — Make a living from what you love making",
-  description: "Velour is the calmest way to launch and run your store.",
+  title: "Morrow — Make a living from what you love making",
+  description: "Morrow is the calmest way to launch and run your store.",
   icons: { icon: "/favicon.svg" },
   openGraph: {
-    title: "Velour — Your store. Ready before lunch.",
+    title: "Morrow — Your store. Ready before lunch.",
     description: "The calmest way to sell online.",
     images: ["/og.png"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Velour — Your store. Ready before lunch.",
+    title: "Morrow — Your store. Ready before lunch.",
     description: "The calmest way to sell online.",
     images: ["/og.png"],
   },
