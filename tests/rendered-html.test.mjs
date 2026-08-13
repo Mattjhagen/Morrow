@@ -52,9 +52,9 @@ test("keeps the passwordless sign-in flow wired to public Supabase configuration
   assert.match(page, /process\.env\.NEXT_PUBLIC_SUPABASE_URL/);
   assert.match(page, /process\.env\.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.match(page, /\/auth\/v1\/otp/);
-  assert.match(page, /method:"POST"/);
-  assert.match(page, /create_user:true/);
-  assert.match(page, /email_redirect_to:window\.location\.origin/);
+  assert.match(page, /method:\s*"POST"/);
+  assert.match(page, /create_user:\s*true/);
+  assert.match(page, /email_redirect_to:\s*window\.location\.origin/);
   assert.match(page, /\/auth\/v1\/user/);
   assert.match(page, /window\.history\.replaceState/);
   assert.match(page, /\/rest\/v1\/stores/);
