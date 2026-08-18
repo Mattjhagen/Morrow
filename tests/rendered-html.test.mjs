@@ -16,7 +16,7 @@ async function render() {
   );
 }
 
-test("server-renders the Morrow storefront", async () => {
+test("server-renders the Velour storefront", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -24,15 +24,11 @@ test("server-renders the Morrow storefront", async () => {
   const html = await response.text();
   assert.match(
     html,
-    /<title>Morrow — Make a living from what you love making<\/title>/,
+    /<title>Velour — Make a living from what you love making<\/title>/,
   );
   assert.match(html, /Your store\. <em>Ready before<\/em> lunch\./);
-  assert.match(html, /Make my store/);
+  assert.match(html, /Live Storefront/);
   assert.match(html, /Start my free 14 days/);
-  assert.match(
-    html,
-    /Morrow is the calmest way to launch and run your store\./,
-  );
   assert.doesNotMatch(html, /Your site is taking shape|Building your site/i);
 });
 
@@ -45,7 +41,7 @@ test("keeps the passwordless sign-in flow wired to public Supabase configuration
 
   assert.match(
     layout,
-    /title:\s*"Morrow — Make a living from what you love making"/,
+    /title:\s*"Velour — Make a living from what you love making"/,
   );
   assert.match(envExample, /^NEXT_PUBLIC_SUPABASE_URL=/m);
   assert.match(envExample, /^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/m);

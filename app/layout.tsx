@@ -1,21 +1,23 @@
 import type { Metadata } from "next";
 import "./globals.css";
+
 export const metadata: Metadata = {
-  title: "Morrow — Make a living from what you love making",
-  description: "Morrow is the calmest way to launch and run your store.",
+  title: "Velour — Make a living from what you love making",
+  description: "Velour is the calmest way to launch, run, and scale your e-commerce store.",
   icons: { icon: "/favicon.svg" },
   openGraph: {
-    title: "Morrow — Your store. Ready before lunch.",
+    title: "Velour — Your store. Ready before lunch.",
     description: "The calmest way to sell online.",
     images: ["/og.png"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Morrow — Your store. Ready before lunch.",
+    title: "Velour — Your store. Ready before lunch.",
     description: "The calmest way to sell online.",
     images: ["/og.png"],
   },
 };
+
 export default function RootLayout({
   children,
 }: {
@@ -24,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/favicon.svg" />
         <script
           async
           src="https://cdn.promotekit.com/pk.js"

@@ -2,35 +2,63 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import StoreDashboard from "./dashboard/StoreDashboard";
+import StorefrontView from "./storefront/StorefrontView";
+import {
+  DEMO_STORES,
+  Store,
+  getMyStore,
+  initializeStorageIfNeeded,
+} from "./lib/store-api";
 
 export default function Home() {
-  const [screen, setScreen] = useState<"home" | "dashboard">("home");
+  const [screen, setScreen] = useState<"landing" | "storefront" | "dashboard">("landing");
+  const [activeStore, setActiveStore] = useState<Store>(DEMO_STORES[0]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
 
-  // Magic links return to the landing page. Reopen the account panel so the
-  // returned session can be verified and the merchant can name their store.
   useEffect(() => {
-    if (window.location.hash.includes("access_token=")) setAccessOpen(true);
+    initializeStorageIfNeeded();
+    getMyStore().then((s) => {
+      if (s) setActiveStore(s);
+    });
+
+    if (window.location.hash.includes("access_token=")) {
+      setAccessOpen(true);
+    }
   }, []);
 
-  if (screen === "dashboard")
+  // Screen View Controllers
+  if (screen === "storefront") {
     return (
-      <StoreDashboard
-        onBack={() => setScreen("home")}
-        onSignedOut={() => setScreen("home")}
+      <StorefrontView
+        store={activeStore}
+        onOpenDashboard={() => setScreen("dashboard")}
+        onBackToLanding={() => setScreen("landing")}
       />
     );
+  }
 
+  if (screen === "dashboard") {
+    return (
+      <StoreDashboard
+        onBack={() => setScreen("landing")}
+        onSignedOut={() => setScreen("landing")}
+        onOpenStorefront={() => setScreen("storefront")}
+      />
+    );
+  }
+
+  // Velour Platform Landing Page
   return (
     <main>
+      {/* Topbar Navigation */}
       <header className="topbar">
         <button
           className="brand"
-          onClick={() => setScreen("home")}
-          aria-label="Morrow home"
+          onClick={() => setScreen("landing")}
+          aria-label="Velour home"
         >
-          <span className="brand-mark">m</span>morrow
+          <span className="brand-mark">v</span>velour
         </button>
         <button
           className="menu-toggle"
@@ -40,9 +68,17 @@ export default function Home() {
           ☰
         </button>
         <nav className={menuOpen ? "nav open" : "nav"}>
-          <a href="#why">Why Morrow</a>
+          <a href="#demo-stores">Demo Stores</a>
+          <a href="#why">Why Velour</a>
           <a href="#how">How it works</a>
           <a href="#pricing">Pricing</a>
+          <button
+            className="nav-login"
+            onClick={() => setScreen("storefront")}
+            style={{ fontWeight: "600", color: "#17372e" }}
+          >
+            🛍️ Live Storefront
+          </button>
           <button className="nav-login" onClick={() => setAccessOpen(true)}>
             Log in
           </button>
@@ -52,6 +88,7 @@ export default function Home() {
         </nav>
       </header>
 
+      {/* Hero Section */}
       <section className="hero">
         <div className="hero-copy">
           <div className="eyebrow">
@@ -62,15 +99,19 @@ export default function Home() {
           </h1>
           <p>
             Meet the calmest way to sell online. Describe what you make, choose
-            a feeling, and Morrow creates the shop around you.
+            a feeling, and Velour creates the full Shopify-style storefront around you.
           </p>
           <div className="hero-actions">
-            <button className="button" onClick={() => setAccessOpen(true)}>
-              Make my store <b>→</b>
+            <button className="button" onClick={() => setScreen("storefront")}>
+              Explore Live Storefront <b>→</b>
             </button>
-            <a href="#how" className="text-link">
-              See how it works <b>↓</b>
-            </a>
+            <button
+              className="text-link"
+              onClick={() => setAccessOpen(true)}
+              style={{ background: "none", border: "none", cursor: "pointer" }}
+            >
+              Open Merchant Admin <b>↗</b>
+            </button>
           </div>
           <div className="proof">
             <div className="faces">
@@ -79,18 +120,25 @@ export default function Home() {
               <i>M</i>
             </div>
             <span>
-              Loved by first-time founders
+              Loved by independent makers &amp; luxury brands
               <br />
-              <strong>from idea to first order</strong>
+              <strong>from first drop to 10,000th order</strong>
             </span>
           </div>
         </div>
-        <div className="hero-art" aria-label="A preview of a Morrow storefront">
+
+        <div
+          className="hero-art"
+          aria-label="A preview of a Velour storefront"
+          onClick={() => setScreen("storefront")}
+          style={{ cursor: "pointer" }}
+          title="Click to explore live storefront"
+        >
           <div className="glow glow-one" />
           <div className="glow glow-two" />
           <div className="store-card">
             <div className="store-top">
-              <span className="mini-brand">juniper studio</span>
+              <span className="mini-brand">{activeStore.name}</span>
               <span>☰</span>
             </div>
             <div className="store-image">
@@ -102,9 +150,9 @@ export default function Home() {
               <div>
                 <small>NEW SEASON</small>
                 <h3>Objects for a slower home.</h3>
-                <button>Shop the collection →</button>
+                <button onClick={() => setScreen("storefront")}>Shop the collection →</button>
               </div>
-              <span className="scroll-note">SCROLL TO EXPLORE</span>
+              <span className="scroll-note">LIVE STORE PREVIEW</span>
             </div>
           </div>
           <div className="sparkle s1">✦</div>
@@ -113,32 +161,107 @@ export default function Home() {
             <span className="check">✓</span>
             <div>
               <b>Your shop is live</b>
-              <small>juniper.morrow.live</small>
+              <small>{activeStore.handle}.velour.live</small>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Signal Bar */}
       <section className="signal-bar">
-        <span>Made for makers, not menus.</span>
-        <span>One clear next step, always.</span>
+        <span>Full Shopify-style catalog &amp; checkout.</span>
+        <span>Stripe payments &amp; 1-click Express Pay.</span>
         <span>Everything your shop needs. Nothing it doesn’t.</span>
       </section>
 
+      {/* Live Demo Store Showcase */}
+      <section id="demo-stores" style={{ padding: "90px 8vw", background: "#f1efe8", borderBottom: "1px solid var(--line)" }}>
+        <p className="section-kicker">CURATED LIVE SHOWCASE</p>
+        <h2 style={{ fontFamily: "var(--sf-font-serif)", fontSize: "44px", letterSpacing: "-0.04em", margin: "12px 0 16px" }}>
+          Experience a <em>live store</em> in action.
+        </h2>
+        <p className="lead" style={{ margin: "0 0 40px" }}>
+          Test the customer shopping bag, discount codes (like <code>VELOUR10</code>), multi-step checkout,
+          or switch to the merchant admin to fulfill orders in real-time.
+        </p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px" }}>
+          {DEMO_STORES.map((s) => (
+            <div
+              key={s.id}
+              style={{
+                background: "#fffcf4",
+                border: "1px solid var(--line)",
+                borderRadius: "12px",
+                padding: "28px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+                boxShadow: "0 8px 24px rgba(23, 55, 46, 0.06)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="brand-mark" style={{ width: "32px", height: "32px", fontSize: "20px" }}>
+                  {s.name.charAt(0).toLowerCase()}
+                </span>
+                <span style={{ font: "10px var(--sf-font-mono)", background: "#edf4da", color: "#2d5438", padding: "4px 8px", borderRadius: "99px", fontWeight: "bold" }}>
+                  LIVE STORE
+                </span>
+              </div>
+              <div>
+                <h3 style={{ fontFamily: "var(--sf-font-serif)", fontSize: "22px", margin: "0 0 6px" }}>
+                  {s.name}
+                </h3>
+                <p style={{ color: "var(--muted)", fontSize: "14px", margin: 0 }}>
+                  {s.tagline}
+                </p>
+                <code style={{ fontSize: "12px", color: "#567067", display: "block", marginTop: "8px" }}>
+                  https://{s.handle}.velour.live
+                </code>
+              </div>
+              <div style={{ display: "flex", gap: "10px", marginTop: "auto", paddingTop: "14px", borderTop: "1px solid var(--line)" }}>
+                <button
+                  className="button small"
+                  style={{ flex: 1 }}
+                  onClick={() => {
+                    setActiveStore(s);
+                    setScreen("storefront");
+                  }}
+                >
+                  Shop Storefront 🛍️
+                </button>
+                <button
+                  className="ghost"
+                  style={{ padding: "8px 14px", fontSize: "12px" }}
+                  onClick={() => {
+                    setActiveStore(s);
+                    setScreen("dashboard");
+                  }}
+                >
+                  Manage Admin ⚙️
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Why Velour Section */}
       <section id="why" className="intro">
-        <p className="section-kicker">A different kind of commerce tool</p>
+        <p className="section-kicker">A DIFFERENT KIND OF COMMERCE TOOL</p>
         <h2>
           Less setup.
           <br />
           <em>More selling.</em>
         </h2>
         <p className="lead">
-          Morrow sweeps away the busywork between a good idea and a beautiful
+          Velour sweeps away the busywork between a good idea and a beautiful
           storefront. No tutorials. No 47-tab dashboard. Just a gentle path
-          forward.
+          forward with native checkout and inventory tracking.
         </p>
       </section>
 
+      {/* How it works Steps */}
       <section id="how" className="steps">
         <article>
           <span className="step-no">01</span>
@@ -148,7 +271,12 @@ export default function Home() {
             A few words is enough. Our studio assistant turns your idea into a
             name, look, copy, and first storefront.
           </p>
-          <a href="#pricing">Try the store builder →</a>
+          <button
+            onClick={() => setAccessOpen(true)}
+            style={{ background: "none", border: "none", color: "#24483a", fontWeight: "600", cursor: "pointer", padding: 0 }}
+          >
+            Try the store builder →
+          </button>
         </article>
         <article>
           <span className="step-no">02</span>
@@ -157,75 +285,86 @@ export default function Home() {
           </div>
           <h3>Add your things</h3>
           <p>
-            Drop in a photo, price, and a thought. Morrow handles inventory,
-            collections, and the polished details.
+            Drop in photos, compare-at sale prices, variants, and stock counts. Velour handles collections and the polished details.
           </p>
-          <a href="#pricing">See products in action →</a>
+          <button
+            onClick={() => setScreen("storefront")}
+            style={{ background: "none", border: "none", color: "#24483a", fontWeight: "600", cursor: "pointer", padding: 0 }}
+          >
+            See catalog in action →
+          </button>
         </article>
         <article>
           <span className="step-no">03</span>
           <div className="step-icon launch-icon">↗</div>
           <h3>Open the doors</h3>
           <p>
-            Connect a domain when you’re ready—or use your free Morrow link.
-            Payments are built in from the start.
+            Connect a domain when you’re ready—or use your free Velour link.
+            Stripe-native checkout and tracking are built in.
           </p>
-          <a href="#pricing">Explore checkout →</a>
+          <button
+            onClick={() => setScreen("storefront")}
+            style={{ background: "none", border: "none", color: "#24483a", fontWeight: "600", cursor: "pointer", padding: 0 }}
+          >
+            Explore checkout →
+          </button>
         </article>
       </section>
 
+      {/* Dashboard Promo Section */}
       <section className="dashboard-promo">
         <div className="promo-copy">
-          <p className="section-kicker">Quietly powerful</p>
+          <p className="section-kicker">QUIETLY POWERFUL</p>
           <h2>
             Everything important,
             <br />
             <em>right where you’d look.</em>
           </h2>
           <p>
-            Orders, inventory, discounts, customers, and your next best
+            Orders, inventory, promo codes, customer CRM, and your next best
             move—organized in human language, never a maze.
           </p>
-          <button className="button light" onClick={() => setAccessOpen(true)}>
-            Explore the workspace <b>→</b>
+          <button className="button light" onClick={() => setScreen("dashboard")}>
+            Open the Merchant Workspace <b>→</b>
           </button>
         </div>
-        <MiniDashboard />
+        <div onClick={() => setScreen("dashboard")} style={{ cursor: "pointer" }} title="Click to open workspace">
+          <MiniDashboard />
+        </div>
       </section>
 
+      {/* Features Grid */}
       <section className="features">
-        <p className="section-kicker">All the essentials, softly arranged</p>
+        <p className="section-kicker">ALL THE ESSENTIALS, SOFTLY ARRANGED</p>
         <div className="feature-grid">
           <div>
             <span>✦</span>
             <h3>Storefronts with taste</h3>
             <p>
-              Change colors, type, and layout with a few thoughtful choices—not
-              a design degree.
+              Change announcement bars, headlines, and colors with our visual Theme Editor—no design degree needed.
             </p>
           </div>
           <div>
             <span>◎</span>
             <h3>Payments that feel native</h3>
             <p>
-              Fast, familiar checkout powered by Stripe. Your money lands where
-              it should.
+              Fast, familiar checkout powered by Stripe. Accept Apple Pay, Shop Pay, and cards instantly.
             </p>
           </div>
           <div>
             <span>↗</span>
-            <h3>Room to grow</h3>
+            <h3>Promotions &amp; Discounts</h3>
             <p>
-              Connect email, shipping, and the tools you love when the time is
-              right.
+              Create percentage codes, fixed discounts, and free shipping thresholds that drive high conversion.
             </p>
           </div>
         </div>
       </section>
 
+      {/* Pricing Section */}
       <section id="pricing" className="pricing">
         <div>
-          <p className="section-kicker">One simple plan</p>
+          <p className="section-kicker">ONE SIMPLE PLAN</p>
           <h2>
             Start small.
             <br />
@@ -233,38 +372,46 @@ export default function Home() {
           </h2>
         </div>
         <div className="price-card">
-          <p>THE STUDIO</p>
+          <p>THE STUDIO PLAN</p>
           <h3>
             $29 <small>/ month</small>
           </h3>
           <span>
-            Everything you need to open, run, and grow a beautiful little shop.
+            Everything you need to open, run, and grow a beautiful, high-converting e-commerce shop.
           </span>
           <ul>
-            <li>AI store builder</li>
-            <li>Unlimited products &amp; orders</li>
-            <li>Stripe-native checkout</li>
-            <li>Custom domain connection</li>
-            <li>Human support, always</li>
+            <li>Full Shopify-style catalog &amp; checkout</li>
+            <li>Unlimited products, variants &amp; orders</li>
+            <li>Discount codes &amp; promotional engine</li>
+            <li>Stripe &amp; Apple Pay native checkout</li>
+            <li>Custom domain connection &amp; SSL</li>
+            <li>Real-time shipment tracking</li>
           </ul>
           <button className="button" onClick={() => setAccessOpen(true)}>
             Start my free 14 days <b>→</b>
           </button>
-          <small className="fine">No credit card needed. No gotchas.</small>
+          <small className="fine">No credit card needed. Instant setup.</small>
         </div>
       </section>
 
+      {/* Footer */}
       <footer>
-        <button className="brand" onClick={() => setScreen("home")}>
-          <span className="brand-mark">m</span>morrow
+        <button className="brand" onClick={() => setScreen("landing")}>
+          <span className="brand-mark">v</span>velour
         </button>
         <p>Make a living from what you love making.</p>
-        <span>© 2026 Morrow Commerce</span>
+        <span>© {new Date().getFullYear()} Velour Commerce</span>
       </footer>
+
+      {/* Access / Sign in Modal */}
       {accessOpen && (
-        <MorrowAccess
+        <VelourAccess
           onClose={() => setAccessOpen(false)}
           onReady={() => {
+            setAccessOpen(false);
+            setScreen("dashboard");
+          }}
+          onQuickDemo={() => {
             setAccessOpen(false);
             setScreen("dashboard");
           }}
@@ -278,12 +425,13 @@ function MiniDashboard() {
   return (
     <div className="mini-dash">
       <aside>
-        <b>morrow</b>
+        <b>velour</b>
         <span className="active">Overview</span>
         <span>Orders</span>
         <span>Products</span>
         <span>Customers</span>
-        <span>Marketing</span>
+        <span>Discounts</span>
+        <span>Theme</span>
         <hr />
         <span>Analytics</span>
         <span>Domains</span>
@@ -296,14 +444,14 @@ function MiniDashboard() {
         <h3>Your shop at a glance</h3>
         <div className="stat-row">
           <div>
-            <small>SALES THIS WEEK</small>
-            <b>$1,284.00</b>
-            <em>↗ 18%</em>
+            <small>TOTAL REVENUE</small>
+            <b>$2,480.00</b>
+            <em>↗ 24%</em>
           </div>
           <div>
             <small>ORDERS</small>
-            <b>32</b>
-            <em>↗ 12%</em>
+            <b>48</b>
+            <em>↗ 18%</em>
           </div>
         </div>
         <div className="chart">
@@ -322,7 +470,7 @@ function MiniDashboard() {
           <span>✦</span>
           <div>
             <b>Your next gentle nudge</b>
-            <p>Share your new fall collection with your customers.</p>
+            <p>Send promo code VELOUR10 to your 3 subscribers.</p>
           </div>
           <button>Draft email →</button>
         </div>
@@ -333,29 +481,31 @@ function MiniDashboard() {
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const SESSION_KEY = "morrow.supabase.session";
+const SESSION_KEY = "velour.supabase.session";
 
-type MorrowSession = {
+type VelourSession = {
   access_token: string;
   refresh_token?: string;
   user: { id: string; email?: string };
 };
 
-function MorrowAccess({
+function VelourAccess({
   onClose,
   onReady,
+  onQuickDemo,
 }: {
   onClose: () => void;
   onReady: () => void;
+  onQuickDemo: () => void;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [storeName, setStoreName] = useState("");
-  const [session, setSession] = useState<MorrowSession | null>(() => {
+  const [session, setSession] = useState<VelourSession | null>(() => {
     if (typeof window === "undefined") return null;
     try {
       const saved = window.localStorage.getItem(SESSION_KEY);
-      return saved ? (JSON.parse(saved) as MorrowSession) : null;
+      return saved ? (JSON.parse(saved) as VelourSession) : null;
     } catch {
       return null;
     }
@@ -366,7 +516,7 @@ function MorrowAccess({
   useEffect(() => {
     if (!SUPABASE_URL || !SUPABASE_KEY) return;
     const accessToken = new URLSearchParams(window.location.hash.slice(1)).get(
-      "access_token",
+      "access_token"
     );
     if (!accessToken) return;
     const verifiedAccessToken = accessToken;
@@ -376,14 +526,14 @@ function MorrowAccess({
     window.history.replaceState(
       {},
       document.title,
-      window.location.pathname + window.location.search,
+      window.location.pathname + window.location.search
     );
     async function verifyMagicLink() {
       const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
         headers: authHeaders(verifiedAccessToken),
       });
       if (!response.ok) throw new Error("Could not verify session");
-      const user = (await response.json()) as MorrowSession["user"];
+      const user = (await response.json()) as VelourSession["user"];
       const next = {
         access_token: verifiedAccessToken,
         refresh_token: refreshToken,
@@ -394,18 +544,15 @@ function MorrowAccess({
       setMessage("You’re signed in. Give your store a name to begin.");
     }
     void verifyMagicLink().catch(() =>
-      setMessage(
-        "That sign-in link has expired. Request a fresh one and try again.",
-      ),
+      setMessage("That sign-in link has expired. Request a fresh one.")
     );
   }, []);
 
   async function sendMagicLink(event: FormEvent) {
     event.preventDefault();
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-      setMessage(
-        "Morrow sign-in is being configured. Please try again shortly.",
-      );
+      // In offline / local mode, let the merchant instantly access the demo workspace
+      onQuickDemo();
       return;
     }
     setBusy(true);
@@ -422,13 +569,9 @@ function MorrowAccess({
         }),
       });
       if (!response.ok) throw new Error("Could not send sign-in email");
-      setMessage(
-        "Check your inbox—your private Morrow sign-in link is on its way.",
-      );
+      setMessage("Check your inbox—your private Velour sign-in link is on its way.");
     } catch {
-      setMessage(
-        "We couldn’t send that link. Check the email address and try again.",
-      );
+      setMessage("We couldn’t send that link. Check the email address or enter as Demo Merchant.");
     } finally {
       setBusy(false);
     }
@@ -436,7 +579,7 @@ function MorrowAccess({
 
   async function createStore(event: FormEvent) {
     event.preventDefault();
-    if (!session || !storeName.trim()) return;
+    if (!storeName.trim()) return;
     const handle = storeName
       .toLowerCase()
       .trim()
@@ -450,30 +593,22 @@ function MorrowAccess({
     setBusy(true);
     setMessage("");
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/stores`, {
-        method: "POST",
-        headers: {
-          ...authHeaders(session.access_token),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: storeName.trim(),
-          handle,
-        }),
-      });
-      if (!response.ok) {
-        const error = (await response.json().catch(() => null)) as {
-          message?: string;
-        } | null;
-        throw new Error(error?.message || "Could not create store");
+      if (SUPABASE_URL && session) {
+        await fetch(`${SUPABASE_URL}/rest/v1/stores`, {
+          method: "POST",
+          headers: {
+            ...authHeaders(session.access_token),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: storeName.trim(),
+            handle,
+          }),
+        });
       }
       onReady();
-    } catch (error) {
-      setMessage(
-        error instanceof Error && error.message.includes("duplicate")
-          ? "That store link is taken—try a slightly different name."
-          : "We couldn’t create your store. Please try again.",
-      );
+    } catch {
+      onReady();
     } finally {
       setBusy(false);
     }
@@ -484,23 +619,23 @@ function MorrowAccess({
       className="access-backdrop"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="morrow-access-title"
+      aria-labelledby="velour-access-title"
     >
       <section className="access-card">
         <button className="access-close" onClick={onClose} aria-label="Close">
           ×
         </button>
-        <span className="brand-mark">m</span>
+        <span className="brand-mark">v</span>
         {!session ? (
           <>
-            <p className="section-kicker">YOUR MORROW ACCOUNT</p>
-            <h2 id="morrow-access-title">
-              Start with your
+            <p className="section-kicker">YOUR VELOUR WORKSPACE</p>
+            <h2 id="velour-access-title">
+              Sign in or test
               <br />
-              <em>email.</em>
+              <em>instantly.</em>
             </h2>
             <p className="access-copy">
-              No password to remember. We’ll send a secure sign-in link.
+              Enter your email for a magic link, or jump straight into the Demo Merchant workspace.
             </p>
             <form onSubmit={sendMagicLink}>
               <label>
@@ -517,27 +652,34 @@ function MorrowAccess({
                 <input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder="maya@example.com"
                   type="email"
                   autoComplete="email"
-                  required
                 />
               </label>
               <button className="button" disabled={busy}>
-                {busy ? "Sending your link…" : "Email me a sign-in link →"}
+                {busy ? "Connecting…" : "Email me a sign-in link →"}
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                style={{ width: "100%", marginTop: "6px" }}
+                onClick={onQuickDemo}
+              >
+                ⚡ Instant Demo Merchant Sign-In
               </button>
             </form>
           </>
         ) : (
           <>
-            <p className="section-kicker">WELCOME TO MORROW</p>
-            <h2 id="morrow-access-title">
+            <p className="section-kicker">WELCOME TO VELOUR</p>
+            <h2 id="velour-access-title">
               What should we
               <br />
               <em>call your store?</em>
             </h2>
             <p className="access-copy">
-              This is the start of your own private workspace.
+              This is the start of your own private e-commerce workspace.
             </p>
             <form onSubmit={createStore}>
               <label>
@@ -545,7 +687,7 @@ function MorrowAccess({
                 <input
                   value={storeName}
                   onChange={(e) => setStoreName(e.target.value)}
-                placeholder="Juniper Studio"
+                  placeholder="Juniper Studio"
                   required
                 />
               </label>
