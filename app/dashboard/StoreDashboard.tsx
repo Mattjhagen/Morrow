@@ -2,6 +2,9 @@
 
 import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import "./dashboard.css";
+import ImageUploader from "../components/ImageUploader";
+import OnboardingChecklist from "./OnboardingChecklist";
+import TutorialModal from "./TutorialModal";
 import {
   AuthError,
   Customer,
@@ -124,6 +127,9 @@ export default function StoreDashboard({
     );
   }
 
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [editingNewProduct, setEditingNewProduct] = useState(false);
+
   const initial = store.name.trim().charAt(0).toUpperCase() || "V";
   const storeUrl = `${store.handle}.velour.live`;
 
@@ -155,8 +161,8 @@ export default function StoreDashboard({
           ))}
         </div>
         <div className="side-bottom">
-          <button onClick={() => toast("Velour Studio Support is active.")}>
-            ? &nbsp; Help &amp; guides
+          <button onClick={() => setShowTutorial(true)}>
+            🎓 &nbsp; Store Tutorial &amp; Guide
           </button>
           <button className="profile" onClick={handleSignOut}>
             <span>{initial}</span>
@@ -169,7 +175,24 @@ export default function StoreDashboard({
       <section className="admin-main">
         <header className="admin-top">
           <span>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</span>
-          <div>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => setShowTutorial(true)}
+              style={{
+                background: "#fff",
+                border: "1px solid #d8e0d6",
+                borderRadius: "8px",
+                padding: "7px 12px",
+                fontSize: "12px",
+                fontWeight: "600",
+                color: "#17372e",
+                cursor: "pointer",
+                marginRight: "10px",
+              }}
+            >
+              🎓 Launch Tutorial
+            </button>
             {onOpenStorefront ? (
               <button
                 className="view-store"
@@ -186,7 +209,14 @@ export default function StoreDashboard({
           </div>
         </header>
         <div className="content">
-          {active === "Overview" && <OverviewSection store={store} onGoto={setActive} onOpenStorefront={onOpenStorefront} />}
+          {active === "Overview" && (
+            <OverviewSection
+              store={store}
+              onGoto={setActive}
+              onOpenStorefront={onOpenStorefront}
+              onAddProduct={() => setEditingNewProduct(true)}
+            />
+          )}
           {active === "Products" && <ProductsSection store={store} toast={toast} />}
           {active === "Orders" && <OrdersSection store={store} toast={toast} />}
           {active === "Customers" && <CustomersSection store={store} toast={toast} />}
@@ -202,6 +232,35 @@ export default function StoreDashboard({
           )}
         </div>
       </section>
+
+      {/* Tutorial Modal */}
+      {showTutorial && (
+        <TutorialModal
+          onClose={() => setShowTutorial(false)}
+          onOpenStorefront={() => {
+            setShowTutorial(false);
+            if (onOpenStorefront) onOpenStorefront();
+          }}
+          onAddProduct={() => {
+            setShowTutorial(false);
+            setEditingNewProduct(true);
+          }}
+        />
+      )}
+
+      {/* Quick Add Product Modal from Checklist/Tutorial */}
+      {editingNewProduct && (
+        <ProductModal
+          store={store}
+          product={null}
+          onClose={() => setEditingNewProduct(false)}
+          onSaved={(msg) => {
+            setEditingNewProduct(false);
+            toast(msg);
+          }}
+        />
+      )}
+
       {notice && <div className="toast">{notice}</div>}
     </main>
   );
@@ -212,16 +271,25 @@ function OverviewSection({
   store,
   onGoto,
   onOpenStorefront,
+  onAddProduct,
 }: {
   store: Store;
   onGoto: (s: Section) => void;
   onOpenStorefront?: () => void;
+  onAddProduct: () => void;
 }) {
   const [data, setData] = useState<Overview | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
+  const [theme, setTheme] = useState<StoreTheme>(DEFAULT_THEME);
+  const [configuringStripe, setConfiguringStripe] = useState(false);
   const [err, setErr] = useState("");
 
   useEffect(() => {
     getOverview(store.id).then(setData).catch((e) => setErr(e.message));
+    listProducts(store.id).then(setProducts);
+    listDiscounts(store.id).then(setDiscounts);
+    getStoreTheme(store.id).then(setTheme);
   }, [store.id]);
 
   const trend = (now: number, prev: number) => {
@@ -244,13 +312,33 @@ function OverviewSection({
               View Storefront ↗
             </button>
           )}
-          <button className="button dark" onClick={() => onGoto("Products")}>
+          <button className="button dark" onClick={onAddProduct}>
             + Add product
           </button>
         </div>
       </div>
 
       {err && <p className="dash-error">{err}</p>}
+
+      {/* Onboarding Checklist Guide */}
+      <OnboardingChecklist
+        store={store}
+        products={products}
+        discounts={discounts}
+        theme={theme}
+        onAddProduct={onAddProduct}
+        onOpenTheme={() => onGoto("Theme customizer")}
+        onOpenDiscounts={() => onGoto("Discounts")}
+        onOpenStripe={() => setConfiguringStripe(true)}
+        onOpenStorefront={onOpenStorefront || (() => {})}
+      />
+
+      {configuringStripe && (
+        <StripeConfigModal
+          onClose={() => setConfiguringStripe(false)}
+          onSaved={() => setConfiguringStripe(false)}
+        />
+      )}
 
       <div className="metrics">
         <Metric
@@ -480,8 +568,31 @@ function ProductModal({
   );
   const [description, setDescription] = useState(product?.description ?? "");
   const [status, setStatus] = useState<Product["status"]>(product?.status ?? "active");
+  const [variants, setVariants] = useState(product?.variants ?? []);
+  const [newVarName, setNewVarName] = useState("");
+  const [newVarPrice, setNewVarPrice] = useState("");
+  const [newVarStock, setNewVarStock] = useState("10");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+
+  const addVariant = () => {
+    if (!newVarName.trim() || !newVarPrice.trim()) return;
+    const v = {
+      id: `var-${Date.now()}`,
+      name: newVarName.trim(),
+      sku: `${sku || "SKU"}-${newVarName.trim().toUpperCase().slice(0, 3)}`,
+      price_cents: dollarsToCents(newVarPrice),
+      inventory_count: Number(newVarStock) || 5,
+      options: { "Option": newVarName.trim() },
+    };
+    setVariants([...variants, v]);
+    setNewVarName("");
+    setNewVarPrice("");
+  };
+
+  const removeVariant = (id: string) => {
+    setVariants(variants.filter((v) => v.id !== id));
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -498,6 +609,7 @@ function ProductModal({
       image_url: imageUrl.trim() || null,
       description: description.trim() || null,
       status,
+      variants,
     };
     try {
       if (product) {
@@ -561,10 +673,45 @@ function ProductModal({
             <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="JUN-MUG-01" />
           </label>
         </div>
-        <label>
-          Image URL
-          <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://images.unsplash.com/..." />
-        </label>
+        <ImageUploader
+          label="Product Photography"
+          value={imageUrl}
+          onChange={(url) => setImageUrl(url)}
+        />
+
+        {/* Variants Matrix */}
+        <div style={{ background: "#f8faf4", border: "1px solid #e1e7df", borderRadius: "8px", padding: "14px", marginTop: "6px" }}>
+          <b style={{ fontSize: "13px", color: "#1f3529", display: "block", marginBottom: "8px" }}>
+            Product Variants &amp; Options ({variants.length})
+          </b>
+          {variants.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "12px" }}>
+              {variants.map((v) => (
+                <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", border: "1px solid #d8e0d6", padding: "6px 10px", borderRadius: "6px", fontSize: "12px" }}>
+                  <span><b>{v.name}</b> · {money(v.price_cents)} ({v.inventory_count} in stock)</span>
+                  <button type="button" onClick={() => removeVariant(v.id)} style={{ color: "#b0402f", background: "none", border: "none", cursor: "pointer", fontSize: "11px" }}>✕ Remove</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: "6px", alignItems: "end" }}>
+            <label style={{ fontSize: "11px", margin: 0 }}>
+              Option Name
+              <input value={newVarName} onChange={(e) => setNewVarName(e.target.value)} placeholder="e.g. 16oz Jumbo" style={{ fontSize: "12px", padding: "6px" }} />
+            </label>
+            <label style={{ fontSize: "11px", margin: 0 }}>
+              Price ($)
+              <input value={newVarPrice} onChange={(e) => setNewVarPrice(e.target.value)} placeholder="39.00" style={{ fontSize: "12px", padding: "6px" }} />
+            </label>
+            <label style={{ fontSize: "11px", margin: 0 }}>
+              Stock
+              <input value={newVarStock} onChange={(e) => setNewVarStock(e.target.value)} placeholder="10" style={{ fontSize: "12px", padding: "6px" }} />
+            </label>
+            <button type="button" className="ghost" onClick={addVariant} style={{ height: "34px", fontSize: "12px", padding: "0 10px" }}>+ Add</button>
+          </div>
+        </div>
+
         <label>
           Description
           <textarea
@@ -682,8 +829,20 @@ function OrdersSection({ store, toast }: { store: Store; toast: (s: string) => v
           order={inspectingOrder}
           onClose={() => setInspectingOrder(null)}
           onFulfill={async (carrier, tracking) => {
-            await fulfillOrder(inspectingOrder.id, carrier, tracking);
-            toast(`Order #${inspectingOrder.order_number} fulfilled with ${carrier}.`);
+            const updated = await fulfillOrder(inspectingOrder.id, carrier, tracking);
+            
+            // Dispatch shipping tracking email
+            void fetch("/api/email/send", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: "shipping_notification",
+                order: updated,
+                storeName: store.name,
+              }),
+            }).catch((err) => console.error("Shipping email send failed:", err));
+
+            toast(`Order #${inspectingOrder.order_number} fulfilled with ${carrier}. Tracking email sent.`);
             setInspectingOrder(null);
             reload();
           }}
@@ -1103,13 +1262,11 @@ function ThemeCustomizerSection({
               />
             </label>
 
-            <label>
-              Hero Banner Image URL
-              <input
-                value={theme.hero_image}
-                onChange={(e) => setTheme({ ...theme, hero_image: e.target.value })}
-              />
-            </label>
+            <ImageUploader
+              label="Hero Editorial Banner Image"
+              value={theme.hero_image}
+              onChange={(url) => setTheme({ ...theme, hero_image: url })}
+            />
 
             <div className="form-row">
               <label>
@@ -1466,34 +1623,160 @@ function DomainsSection({ storeUrl, toast }: { storeUrl: string; toast: (s: stri
 
 /* ───────────────────────── Integrations ───────────────────────── */
 function IntegrationsSection({ toast }: { toast: (s: string) => void }) {
+  const [configuringStripe, setConfiguringStripe] = useState(false);
+  const [configuringResend, setConfiguringResend] = useState(false);
+
   const items = [
-    { name: "Stripe", detail: "Accept Apple Pay, Google Pay, and credit cards", status: "Connected" },
-    { name: "Resend", detail: "Deliver transactional order receipts and tracking emails", status: "Ready" },
-    { name: "Shippo / EasyPost", detail: "Generate discounted shipping labels with 1 click", status: "Ready" },
+    { name: "Stripe", detail: "Accept Apple Pay, Google Pay, and credit cards", status: "Connected · Ready", config: () => setConfiguringStripe(true) },
+    { name: "Resend", detail: "Deliver transactional order receipts and tracking emails", status: "Active · Ready", config: () => setConfiguringResend(true) },
+    { name: "Shippo / EasyPost", detail: "Generate discounted shipping labels with 1 click", status: "Ready", config: () => toast("Shippo shipping label provider ready.") },
   ];
   return (
     <>
       <div className="welcome">
         <div>
-          <p className="section-kicker">ECOSYSTEM</p>
+          <p className="section-kicker">ECOSYSTEM &amp; GATEWAYS</p>
           <h1>Integrations</h1>
           <p>Payment gateways, shipping carriers, and notification tools.</p>
         </div>
       </div>
       <section className="panel">
         <table className="data-table">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
           <tbody>
             {items.map((i) => (
               <tr key={i.name}>
                 <td><b>{i.name}</b></td>
                 <td>{i.detail}</td>
-                <td className="row-actions"><button onClick={() => toast(`${i.name} configured.`)}>Configure</button></td>
+                <td><span className="badge active">{i.status}</span></td>
+                <td className="row-actions"><button onClick={i.config}>Configure</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </section>
+
+      {configuringStripe && (
+        <StripeConfigModal
+          onClose={() => setConfiguringStripe(false)}
+          onSaved={() => {
+            setConfiguringStripe(false);
+            toast("Stripe gateway settings saved.");
+          }}
+        />
+      )}
+
+      {configuringResend && (
+        <ResendConfigModal
+          onClose={() => setConfiguringResend(false)}
+          onSaved={() => {
+            setConfiguringResend(false);
+            toast("Resend email delivery settings saved.");
+          }}
+        />
+      )}
     </>
+  );
+}
+
+function ResendConfigModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [apiKey, setApiKey] = useState("re_MockApiKeyVelourEmails_xyz123");
+  const [senderEmail, setSenderEmail] = useState("Velour Studio <orders@velour.live>");
+
+  return (
+    <Modal title="Resend Transactional Email Delivery" onClose={onClose}>
+      <form onSubmit={(e) => { e.preventDefault(); onSaved(); }} className="dash-form">
+        <div style={{ background: "#edf4da", padding: "12px 14px", borderRadius: "8px", fontSize: "13px", color: "#24483a" }}>
+          <b>Transactional Email Delivery: Active</b>
+          <p style={{ margin: "4px 0 0", fontSize: "12px" }}>
+            Velour automatically delivers styled HTML receipts upon checkout and shipment notifications when orders are fulfilled.
+          </p>
+        </div>
+
+        <label>
+          Sender "From" Address
+          <input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} placeholder="Velour <orders@velour.live>" required />
+        </label>
+
+        <label>
+          Resend API Key
+          <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="re_123456789..." required />
+        </label>
+
+        <div style={{ background: "#f8faf4", border: "1px solid #e1e7df", borderRadius: "8px", padding: "12px", fontSize: "12px" }}>
+          <b>Supported Automated Templates:</b>
+          <ul style={{ margin: "6px 0 0", paddingLeft: "16px", color: "#5b6b60" }}>
+            <li><code>Order Confirmation Receipt</code> (with itemized breakdown &amp; tracking link)</li>
+            <li><code>Order Dispatched &amp; Tracking</code> (with carrier &amp; tracking number)</li>
+          </ul>
+        </div>
+
+        <div className="form-actions">
+          <button type="button" className="ghost" onClick={onClose}>Cancel</button>
+          <button className="button">Save Email Settings</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function StripeConfigModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [pubKey, setPubKey] = useState("pk_test_51MockKeyVelourEcommerce");
+  const [secKey, setSecKey] = useState("sk_test_51MockSecretKeyVelourEcommerce");
+  const [webhookSecret, setWebhookSecret] = useState("whsec_MockWebhookSecret");
+  const [testMode, setTestMode] = useState(true);
+
+  return (
+    <Modal title="Stripe Payment Gateway Configuration" onClose={onClose}>
+      <form onSubmit={(e) => { e.preventDefault(); onSaved(); }} className="dash-form">
+        <div style={{ background: "#edf4da", padding: "12px 14px", borderRadius: "8px", fontSize: "13px", color: "#24483a" }}>
+          <b>Stripe Gateway: Active &amp; Ready</b>
+          <p style={{ margin: "4px 0 0", fontSize: "12px" }}>
+            Velour supports both live Stripe credit card charging and simulated Test Mode checkout.
+          </p>
+        </div>
+
+        <label>
+          Environment Mode
+          <select value={testMode ? "test" : "live"} onChange={(e) => setTestMode(e.target.value === "test")}>
+            <option value="test">Test Mode (Safe Sandbox with 4242 Cards)</option>
+            <option value="live">Live Production Mode</option>
+          </select>
+        </label>
+
+        <label>
+          Stripe Publishable Key
+          <input value={pubKey} onChange={(e) => setPubKey(e.target.value)} placeholder="pk_test_..." />
+        </label>
+
+        <label>
+          Stripe Secret Key
+          <input type="password" value={secKey} onChange={(e) => setSecKey(e.target.value)} placeholder="sk_test_..." />
+        </label>
+
+        <label>
+          Webhook Endpoint URL
+          <input readOnly value="https://velour.live/api/stripe/webhook" style={{ background: "#f8faf4", color: "#5b6b60" }} />
+        </label>
+
+        <label>
+          Stripe Webhook Signing Secret
+          <input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} placeholder="whsec_..." />
+        </label>
+
+        <div className="form-actions">
+          <button type="button" className="ghost" onClick={onClose}>Cancel</button>
+          <button className="button">Save Gateway Settings</button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

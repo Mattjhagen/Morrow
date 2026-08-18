@@ -13,6 +13,7 @@ export default function StorefrontNav({
   onOpenCart,
   onOpenDashboard,
   onBackToLanding,
+  onOpenCustomerOrders,
 }: {
   store: Store;
   theme: StoreTheme;
@@ -23,6 +24,7 @@ export default function StorefrontNav({
   onOpenCart: () => void;
   onOpenDashboard: () => void;
   onBackToLanding: () => void;
+  onOpenCustomerOrders?: () => void;
 }) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -68,8 +70,18 @@ export default function StorefrontNav({
 
         {/* Action Controls */}
         <div className="sf-nav-actions">
+          {onOpenCustomerOrders && (
+            <button
+              className="sf-icon-btn"
+              onClick={onOpenCustomerOrders}
+              title="Track Order or View Receipts"
+              style={{ fontSize: "13px", fontWeight: "600" }}
+            >
+              <span>📦 Orders</span>
+            </button>
+          )}
           <button className="sf-icon-btn" onClick={onOpenDashboard} title="Open Merchant Dashboard">
-            <span>⚙️ Merchant Admin</span>
+            <span>⚙️ Admin</span>
           </button>
           <button className="sf-cart-btn" onClick={onOpenCart} aria-label="Open Shopping Bag">
             <span>Bag</span>

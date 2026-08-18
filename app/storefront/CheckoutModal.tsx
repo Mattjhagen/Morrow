@@ -100,6 +100,30 @@ export default function CheckoutModal({
     setErr("");
 
     try {
+      // 1. Create / Verify Stripe Payment Intent on server
+      const intentRes = await fetch("/api/stripe/create-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountCents: finalTotalCents,
+          currency: "usd",
+          customerEmail: email.trim().toLowerCase(),
+          customerName: name.trim(),
+          storeId: store.id,
+          metadata: {
+            itemCount: String(cart.reduce((s, i) => s + i.quantity, 0)),
+            discountCode: discount?.code || "none",
+          },
+        }),
+      });
+
+      if (!intentRes.ok) {
+        const intentErr = await intentRes.json().catch(() => null);
+        throw new Error(intentErr?.error || "Payment gateway connection failed.");
+      }
+
+      const paymentData = await intentRes.json();
+
       const orderPayload: StorefrontOrderInput = {
         customer: {
           name: name.trim(),
@@ -129,6 +153,18 @@ export default function CheckoutModal({
       };
 
       const placedOrder = await placeStorefrontOrder(store.id, orderPayload);
+
+      // Trigger asynchronous order confirmation email receipt
+      void fetch("/api/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "order_confirmation",
+          order: placedOrder,
+          storeName: store.name,
+        }),
+      }).catch((err) => console.error("Email send failed:", err));
+
       onOrderCompleted(placedOrder);
     } catch (e2) {
       setErr(e2 instanceof Error ? e2.message : "We were unable to process your checkout.");

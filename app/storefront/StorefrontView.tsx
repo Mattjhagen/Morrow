@@ -20,6 +20,7 @@ import ProductDetailModal from "./ProductDetailModal";
 import CartDrawer from "./CartDrawer";
 import CheckoutModal from "./CheckoutModal";
 import OrderConfirmationModal from "./OrderConfirmationModal";
+import CustomerOrdersModal from "./CustomerOrdersModal";
 
 export default function StorefrontView({
   store,
@@ -43,6 +44,7 @@ export default function StorefrontView({
   const [activePdpProduct, setActivePdpProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isCustomerOrdersOpen, setIsCustomerOrdersOpen] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
 
   // Load store theme and products
@@ -105,6 +107,7 @@ export default function StorefrontView({
         onOpenCart={() => setIsCartOpen(true)}
         onOpenDashboard={onOpenDashboard}
         onBackToLanding={onBackToLanding}
+        onOpenCustomerOrders={() => setIsCustomerOrdersOpen(true)}
       />
 
       {/* Hero Banner */}
@@ -239,6 +242,14 @@ export default function StorefrontView({
           appliedDiscount={appliedDiscount}
           onClose={() => setIsCheckoutOpen(false)}
           onOrderCompleted={handleOrderCompleted}
+        />
+      )}
+
+      {/* Customer Orders / Account Modal */}
+      {isCustomerOrdersOpen && (
+        <CustomerOrdersModal
+          store={store}
+          onClose={() => setIsCustomerOrdersOpen(false)}
         />
       )}
 

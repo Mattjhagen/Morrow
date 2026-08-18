@@ -49,6 +49,17 @@ export type Store = {
   created_at: string;
 };
 
+export type ProductVariant = {
+  id: string;
+  name: string;
+  sku: string;
+  price_cents: number;
+  compare_at_price_cents?: number | null;
+  inventory_count: number;
+  image_url?: string | null;
+  options: Record<string, string>;
+};
+
 export type Product = {
   id: string;
   store_id: string;
@@ -67,6 +78,7 @@ export type Product = {
   review_count?: number;
   badges?: string[];
   details?: Record<string, string>;
+  variants?: ProductVariant[];
   created_at: string;
   updated_at: string;
 };
@@ -224,9 +236,41 @@ const SEED_PRODUCTS_JUNIPER: Product[] = [
     rating: 4.9,
     review_count: 38,
     badges: ["Best Seller", "Small Batch"],
+    variants: [
+      {
+        id: "var-mug-01",
+        name: "Oat Satin / 12oz",
+        sku: "JUN-MUG-OAT-12",
+        price_cents: 3400,
+        compare_at_price_cents: 4200,
+        inventory_count: 8,
+        image_url: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80",
+        options: { "Finish": "Oat Satin", "Size": "12oz Standard" },
+      },
+      {
+        id: "var-mug-02",
+        name: "Moss Glaze / 12oz",
+        sku: "JUN-MUG-MOSS-12",
+        price_cents: 3600,
+        compare_at_price_cents: 4400,
+        inventory_count: 5,
+        image_url: "https://images.unsplash.com/photo-1577937927133-66ef06acdf18?auto=format&fit=crop&w=800&q=80",
+        options: { "Finish": "Moss Glaze", "Size": "12oz Standard" },
+      },
+      {
+        id: "var-mug-03",
+        name: "Charcoal Matte / 16oz Jumbo",
+        sku: "JUN-MUG-CHAR-16",
+        price_cents: 3900,
+        compare_at_price_cents: 4800,
+        inventory_count: 3,
+        image_url: "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=800&q=80",
+        options: { "Finish": "Charcoal Matte", "Size": "16oz Jumbo" },
+      },
+    ],
     details: {
-      "Capacity": "12 fl oz (355ml)",
-      "Material": "Natural glazed stoneware",
+      "Capacity": "12 fl oz or 16 fl oz",
+      "Material": "Natural iron-rich glazed stoneware",
       "Care": "Dishwasher & microwave safe",
       "Origin": "Kyoto, Japan"
     },
@@ -796,6 +840,47 @@ export async function getStoreByHandle(handle: string): Promise<Store | null> {
   return localStores[0] || DEMO_STORE_JUNIPER;
 }
 
+export async function createStore(name: string, handle: string): Promise<Store> {
+  initializeStorageIfNeeded();
+  const cleanHandle = handle.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  const newStore: Store = {
+    id: `store-${Date.now()}`,
+    owner_id: `user-${Date.now()}`,
+    name: name.trim(),
+    handle: cleanHandle,
+    tagline: "Handcrafted & intentional goods",
+    currency: "usd",
+    created_at: new Date().toISOString(),
+  };
+
+  if (SUPABASE_URL && SUPABASE_KEY && loadSession()) {
+    try {
+      const rows = await rest<Store[]>(`/stores`, {
+        method: "POST",
+        headers: writeHeaders,
+        body: JSON.stringify({ name: newStore.name, handle: newStore.handle }),
+      });
+      if (rows?.[0]) return rows[0];
+    } catch {
+      // fallback to local
+    }
+  }
+
+  const stores = getLocal<Store[]>(LOCAL_STORES_KEY, DEMO_STORES);
+  stores.unshift(newStore);
+  setLocal(LOCAL_STORES_KEY, stores);
+
+  const themes = getLocal<Record<string, StoreTheme>>(LOCAL_THEMES_KEY, {});
+  themes[newStore.id] = {
+    ...DEFAULT_THEME,
+    banner_headline: `Welcome to ${newStore.name}`,
+    banner_subhead: "Curated handcrafted pieces made with care and intentional slow design.",
+  };
+  setLocal(LOCAL_THEMES_KEY, themes);
+
+  return newStore;
+}
+
 export async function updateStore(id: string, patch: Partial<Pick<Store, "name" | "handle" | "tagline">>): Promise<Store | undefined> {
   initializeStorageIfNeeded();
   if (SUPABASE_URL && SUPABASE_KEY && loadSession()) {
@@ -849,8 +934,7 @@ export async function listProducts(storeId: string): Promise<Product[]> {
     }
   }
   const localProds = getLocal<Product[]>(LOCAL_PRODUCTS_KEY, SEED_PRODUCTS_JUNIPER);
-  const filtered = localProds.filter((p) => p.store_id === storeId || storeId.includes("juniper"));
-  return filtered.length ? filtered : localProds;
+  return localProds.filter((p) => p.store_id === storeId);
 }
 
 export type ProductInput = {
@@ -1007,7 +1091,8 @@ export async function listCustomers(storeId: string): Promise<Customer[]> {
       // fallback
     }
   }
-  return getLocal<Customer[]>(LOCAL_CUSTOMERS_KEY, SEED_CUSTOMERS);
+  const customers = getLocal<Customer[]>(LOCAL_CUSTOMERS_KEY, SEED_CUSTOMERS);
+  return customers.filter((c) => c.store_id === storeId);
 }
 
 export async function createCustomer(
@@ -1016,7 +1101,7 @@ export async function createCustomer(
 ): Promise<Customer> {
   initializeStorageIfNeeded();
   const customers = getLocal<Customer[]>(LOCAL_CUSTOMERS_KEY, SEED_CUSTOMERS);
-  const existing = customers.find((c) => c.email.toLowerCase() === input.email.toLowerCase());
+  const existing = customers.find((c) => c.email.toLowerCase() === input.email.toLowerCase() && c.store_id === storeId);
   if (existing) {
     if (input.name && !existing.name) existing.name = input.name;
     setLocal(LOCAL_CUSTOMERS_KEY, customers);
@@ -1043,7 +1128,7 @@ export async function createCustomer(
 export async function listDiscounts(storeId: string): Promise<Discount[]> {
   initializeStorageIfNeeded();
   const discounts = getLocal<Discount[]>(LOCAL_DISCOUNTS_KEY, SEED_DISCOUNTS);
-  return discounts.filter((d) => d.store_id === storeId || storeId.includes("juniper"));
+  return discounts.filter((d) => d.store_id === storeId);
 }
 
 export async function createDiscount(
@@ -1059,8 +1144,8 @@ export async function createDiscount(
   const discounts = getLocal<Discount[]>(LOCAL_DISCOUNTS_KEY, SEED_DISCOUNTS);
   const cleanCode = input.code.toUpperCase().trim().replace(/[^A-Z0-9_-]/g, "");
   
-  if (discounts.some((d) => d.code === cleanCode)) {
-    throw new Error(`Discount code ${cleanCode} already exists.`);
+  if (discounts.some((d) => d.code === cleanCode && d.store_id === storeId)) {
+    throw new Error(`Discount code ${cleanCode} already exists in this store.`);
   }
 
   const newDisc: Discount = {
@@ -1088,7 +1173,7 @@ export async function validateDiscountCode(
   initializeStorageIfNeeded();
   const clean = code.toUpperCase().trim();
   const discounts = getLocal<Discount[]>(LOCAL_DISCOUNTS_KEY, SEED_DISCOUNTS);
-  const found = discounts.find((d) => d.code === clean && d.is_active);
+  const found = discounts.find((d) => d.code === clean && d.store_id === storeId && d.is_active);
 
   if (!found) {
     return { valid: false, discountAmountCents: 0, message: "Invalid or expired discount code." };
@@ -1134,7 +1219,7 @@ export async function listOrders(storeId: string): Promise<Order[]> {
     }
   }
   const orders = getLocal<Order[]>(LOCAL_ORDERS_KEY, SEED_ORDERS);
-  return orders.filter((o) => o.store_id === storeId || storeId.includes("juniper"));
+  return orders.filter((o) => o.store_id === storeId);
 }
 
 export async function updateOrderStatus(id: string, status: Order["status"]): Promise<Order> {

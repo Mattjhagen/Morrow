@@ -6,6 +6,7 @@ import StorefrontView from "./storefront/StorefrontView";
 import {
   DEMO_STORES,
   Store,
+  createStore as createStoreApi,
   getMyStore,
   initializeStorageIfNeeded,
 } from "./lib/store-api";
@@ -18,12 +19,42 @@ export default function Home() {
 
   useEffect(() => {
     initializeStorageIfNeeded();
-    getMyStore().then((s) => {
-      if (s) setActiveStore(s);
-    });
 
-    if (window.location.hash.includes("access_token=")) {
-      setAccessOpen(true);
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const storeParam = urlParams.get("store");
+      const viewParam = urlParams.get("view");
+
+      // Check subdomain: e.g. "juniper.velour.live" -> "juniper"
+      const hostname = window.location.hostname;
+      const sub = hostname.includes(".velour.live")
+        ? hostname.replace(".velour.live", "")
+        : null;
+
+      const targetHandle = storeParam || sub;
+
+      if (targetHandle) {
+        const found = DEMO_STORES.find(
+          (s) => s.handle.toLowerCase() === targetHandle.toLowerCase()
+        );
+        if (found) {
+          setActiveStore(found);
+          if (viewParam !== "landing") {
+            setScreen(viewParam === "dashboard" ? "dashboard" : "storefront");
+          }
+        }
+      } else {
+        getMyStore().then((s) => {
+          if (s) setActiveStore(s);
+        });
+      }
+
+      if (viewParam === "storefront") setScreen("storefront");
+      if (viewParam === "dashboard") setScreen("dashboard");
+
+      if (window.location.hash.includes("access_token=")) {
+        setAccessOpen(true);
+      }
     }
   }, []);
 
@@ -407,11 +438,13 @@ export default function Home() {
       {accessOpen && (
         <VelourAccess
           onClose={() => setAccessOpen(false)}
-          onReady={() => {
+          onReady={(newStore) => {
+            if (newStore) setActiveStore(newStore);
             setAccessOpen(false);
             setScreen("dashboard");
           }}
-          onQuickDemo={() => {
+          onQuickDemo={(demoStore) => {
+            if (demoStore) setActiveStore(demoStore);
             setAccessOpen(false);
             setScreen("dashboard");
           }}
@@ -604,15 +637,28 @@ function VelourAccess({
             name: storeName.trim(),
             handle,
           }),
-        });
+        }).catch(() => null);
       }
-      onReady();
+      const created = await createStoreApi(storeName.trim(), handle);
+      onReady(created);
     } catch {
       onReady();
     } finally {
       setBusy(false);
     }
   }
+
+  const startCleanStore = async () => {
+    setBusy(true);
+    try {
+      const created = await createStoreApi("My New Studio", `studio-${Date.now().toString(36).slice(-4)}`);
+      onReady(created);
+    } catch {
+      onQuickDemo();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div
@@ -630,12 +676,12 @@ function VelourAccess({
           <>
             <p className="section-kicker">YOUR VELOUR WORKSPACE</p>
             <h2 id="velour-access-title">
-              Sign in or test
+              Sign in or launch
               <br />
-              <em>instantly.</em>
+              <em>a new shop.</em>
             </h2>
             <p className="access-copy">
-              Enter your email for a magic link, or jump straight into the Demo Merchant workspace.
+              Enter your email for a magic link, or jump straight into a brand new clean store.
             </p>
             <form onSubmit={sendMagicLink}>
               <label>
@@ -660,14 +706,27 @@ function VelourAccess({
               <button className="button" disabled={busy}>
                 {busy ? "Connecting…" : "Email me a sign-in link →"}
               </button>
-              <button
-                type="button"
-                className="ghost"
-                style={{ width: "100%", marginTop: "6px" }}
-                onClick={onQuickDemo}
-              >
-                ⚡ Instant Demo Merchant Sign-In
-              </button>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "12px" }}>
+                <button
+                  type="button"
+                  className="button"
+                  style={{ background: "#24483a", color: "#fff", width: "100%" }}
+                  onClick={startCleanStore}
+                  disabled={busy}
+                >
+                  ✨ Start Fresh Clean Store (0 Products &amp; Tutorial)
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  style={{ width: "100%" }}
+                  onClick={() => onQuickDemo(DEMO_STORES[0])}
+                  disabled={busy}
+                >
+                  ⚡ Explore Juniper Studio Showcase
+                </button>
+              </div>
             </form>
           </>
         ) : (
