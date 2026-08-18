@@ -72,6 +72,7 @@ export default function Home() {
   if (screen === "dashboard") {
     return (
       <StoreDashboard
+        initialStore={activeStore}
         onBack={() => setScreen("landing")}
         onSignedOut={() => setScreen("landing")}
         onOpenStorefront={() => setScreen("storefront")}

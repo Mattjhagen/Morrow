@@ -5,8 +5,8 @@ import { Discount, Product, Store, StoreTheme } from "../lib/store-api";
 
 export default function OnboardingChecklist({
   store,
-  products,
-  discounts,
+  products = [],
+  discounts = [],
   theme,
   onAddProduct,
   onOpenTheme,
@@ -15,9 +15,9 @@ export default function OnboardingChecklist({
   onOpenStorefront,
 }: {
   store: Store;
-  products: Product[];
-  discounts: Discount[];
-  theme: StoreTheme;
+  products?: Product[];
+  discounts?: Discount[];
+  theme?: StoreTheme;
   onAddProduct: () => void;
   onOpenTheme: () => void;
   onOpenDiscounts: () => void;
@@ -27,12 +27,16 @@ export default function OnboardingChecklist({
   const [collapsed, setCollapsed] = useState(false);
   const [stripeConfigured, setStripeConfigured] = useState(true);
 
+  const safeProducts = products || [];
+  const safeDiscounts = discounts || [];
+  const safeTheme = theme || DEFAULT_THEME;
+
   const steps = [
     {
       id: "product",
       title: "Add your first product",
       desc: "Upload photos, set pricing, compare-at sale prices, and inventory stock.",
-      completed: products.length > 0,
+      completed: safeProducts.length > 0,
       actionLabel: "+ Add Product",
       action: onAddProduct,
     },
@@ -40,7 +44,7 @@ export default function OnboardingChecklist({
       id: "theme",
       title: "Personalize your storefront theme",
       desc: "Set your announcement bar, editorial hero headline, and brand aesthetic.",
-      completed: !!theme.announcement && theme.announcement.length > 10,
+      completed: Boolean(safeTheme?.announcement && safeTheme.announcement.length > 5),
       actionLabel: "Edit Theme →",
       action: onOpenTheme,
     },
@@ -48,7 +52,7 @@ export default function OnboardingChecklist({
       id: "discount",
       title: "Create a welcome promotion code",
       desc: "Drive your first drop conversions with a promo like WELCOME10 or FREESHIP.",
-      completed: discounts.length > 0,
+      completed: safeDiscounts.length > 0,
       actionLabel: "+ Create Code",
       action: onOpenDiscounts,
     },

@@ -54,16 +54,18 @@ type Section = (typeof PRIMARY_NAV)[number] | (typeof MANAGEMENT_NAV)[number];
 const ORDER_STATUSES: Order["status"][] = ["pending", "paid", "fulfilled", "refunded", "cancelled"];
 
 export default function StoreDashboard({
+  initialStore,
   onBack,
   onSignedOut,
   onOpenStorefront,
 }: {
+  initialStore?: Store;
   onBack: () => void;
   onSignedOut: () => void;
   onOpenStorefront?: () => void;
 }) {
-  const [store, setStore] = useState<Store | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [store, setStore] = useState<Store | null>(initialStore || null);
+  const [loading, setLoading] = useState(!initialStore);
   const [error, setError] = useState("");
   const [active, setActive] = useState<Section>("Overview");
   const [notice, setNotice] = useState("");
@@ -74,6 +76,11 @@ export default function StoreDashboard({
   }, []);
 
   useEffect(() => {
+    if (initialStore) {
+      setStore(initialStore);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -99,7 +106,7 @@ export default function StoreDashboard({
     return () => {
       cancelled = true;
     };
-  }, [onSignedOut]);
+  }, [initialStore, onSignedOut]);
 
   const handleSignOut = () => {
     signOut();
