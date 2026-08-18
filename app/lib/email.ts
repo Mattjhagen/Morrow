@@ -1,6 +1,7 @@
 import { Order, money } from "./store-api";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Velour <orders@velour.live>";
 
 export type SendEmailParams = {
   to: string;
@@ -154,7 +155,7 @@ export function generateShippingNotificationHtml(order: Order, storeName = "Velo
  * Sends transactional email via Resend API or simulated fallback.
  */
 export async function sendTransactionalEmail(params: SendEmailParams): Promise<EmailSendResult> {
-  const { to, subject, html, from = "Velour Studio <orders@velour.live>" } = params;
+  const { to, subject, html, from = RESEND_FROM_EMAIL } = params;
 
   if (RESEND_API_KEY) {
     try {
