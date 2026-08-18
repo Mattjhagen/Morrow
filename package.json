@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@11.21.0",
   "engines": {
-    "node": ">=22.13.0 <23"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
