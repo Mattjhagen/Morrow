@@ -583,8 +583,14 @@ function VelourAccess({
 
   async function sendMagicLink(event: FormEvent) {
     event.preventDefault();
-    if (!SUPABASE_URL || !SUPABASE_KEY) {
-      // In offline / local mode, let the merchant instantly access the demo workspace
+    const isConfigured =
+      Boolean(SUPABASE_URL) &&
+      Boolean(SUPABASE_KEY) &&
+      !SUPABASE_URL?.includes("your-project-ref") &&
+      !SUPABASE_KEY?.includes("your_public_key");
+
+    if (!isConfigured) {
+      // If Supabase env vars are not set in Vercel yet, provide instant demo access
       onQuickDemo();
       return;
     }
