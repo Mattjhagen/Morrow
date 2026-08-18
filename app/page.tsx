@@ -595,16 +595,23 @@ function VelourAccess({
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY },
         body: JSON.stringify({
-          email,
+          email: email.trim().toLowerCase(),
           create_user: true,
-          data: { full_name: name },
+          data: { full_name: name.trim() },
           email_redirect_to: window.location.origin,
         }),
       });
-      if (!response.ok) throw new Error("Could not send sign-in email");
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const errMsg = errorData?.msg || errorData?.error_description || errorData?.message || `Error (${response.status}): Could not send email`;
+        throw new Error(errMsg);
+      }
+
       setMessage("Check your inbox—your private Velour sign-in link is on its way.");
-    } catch {
-      setMessage("We couldn’t send that link. Check the email address or enter as Demo Merchant.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "We couldn’t send that link. Check the email address or try Demo mode.";
+      setMessage(msg);
     } finally {
       setBusy(false);
     }
