@@ -34,6 +34,7 @@ export default function CheckoutModal({
   const [country, setCountry] = useState("United States");
 
   const [selectedShipping, setSelectedShipping] = useState(SHIPPING_METHODS[0]);
+  const [gateway, setGateway] = useState<"lemonsqueezy" | "stripe">("lemonsqueezy");
   const [cardNumber, setCardNumber] = useState("•••• •••• •••• 4242");
   const [cardExp, setCardExp] = useState("12/28");
   const [cardCvc, setCardCvc] = useState("888");
@@ -100,29 +101,59 @@ export default function CheckoutModal({
     setErr("");
 
     try {
-      // 1. Create / Verify Stripe Payment Intent on server
-      const intentRes = await fetch("/api/stripe/create-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amountCents: finalTotalCents,
-          currency: "usd",
-          customerEmail: email.trim().toLowerCase(),
-          customerName: name.trim(),
-          storeId: store.id,
-          metadata: {
-            itemCount: String(cart.reduce((s, i) => s + i.quantity, 0)),
-            discountCode: discount?.code || "none",
-          },
-        }),
-      });
+      const itemsSummary = cart.map((i) => `${i.product.name} (x${i.quantity})`).join(", ");
 
-      if (!intentRes.ok) {
-        const intentErr = await intentRes.json().catch(() => null);
-        throw new Error(intentErr?.error || "Payment gateway connection failed.");
+      if (gateway === "lemonsqueezy") {
+        // Create Lemon Squeezy Checkout session
+        const lsRes = await fetch("/api/lemonsqueezy/create-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amountCents: finalTotalCents,
+            currency: "usd",
+            customerEmail: email.trim().toLowerCase(),
+            customerName: name.trim(),
+            storeId: store.id,
+            itemsSummary,
+            metadata: {
+              discountCode: discount?.code || "none",
+              itemCount: String(cart.reduce((s, i) => s + i.quantity, 0)),
+            },
+          }),
+        });
+
+        const lsData = await lsRes.json().catch(() => null);
+        if (!lsRes.ok || !lsData?.checkoutUrl) {
+          throw new Error(lsData?.error || "Lemon Squeezy checkout initialization failed.");
+        }
+
+        // If live checkout URL and not simulated, we can optionally open it
+        if (lsData.checkoutUrl && !lsData.isSimulated && typeof window !== "undefined") {
+          window.open(lsData.checkoutUrl, "_blank");
+        }
+      } else {
+        // 1. Create / Verify Stripe Payment Intent on server
+        const intentRes = await fetch("/api/stripe/create-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amountCents: finalTotalCents,
+            currency: "usd",
+            customerEmail: email.trim().toLowerCase(),
+            customerName: name.trim(),
+            storeId: store.id,
+            metadata: {
+              itemCount: String(cart.reduce((s, i) => s + i.quantity, 0)),
+              discountCode: discount?.code || "none",
+            },
+          }),
+        });
+
+        if (!intentRes.ok) {
+          const intentErr = await intentRes.json().catch(() => null);
+          throw new Error(intentErr?.error || "Payment gateway connection failed.");
+        }
       }
-
-      const paymentData = await intentRes.json();
 
       const orderPayload: StorefrontOrderInput = {
         customer: {
@@ -287,32 +318,87 @@ export default function CheckoutModal({
 
             {/* Step 4: Payment */}
             <div style={{ marginTop: "16px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                <h3 className="sf-checkout-step-title" style={{ margin: 0 }}>
-                  <span className="sf-step-num">4</span>
-                  <span>Payment (Stripe Native)</span>
-                </h3>
-                <button type="button" className="sf-test-card-fill-btn" onClick={fillTestCard}>
-                  ⚡ Fill Test Card
+              <h3 className="sf-checkout-step-title" style={{ margin: "0 0 12px" }}>
+                <span className="sf-step-num">4</span>
+                <span>Payment Gateway</span>
+              </h3>
+
+              {/* Payment Gateway Selector */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
+                <button
+                  type="button"
+                  onClick={() => setGateway("lemonsqueezy")}
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    border: gateway === "lemonsqueezy" ? "2px solid #24483a" : "1px solid var(--sf-line)",
+                    background: gateway === "lemonsqueezy" ? "#f4f8f4" : "#fff",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px",
+                  }}
+                >
+                  <b style={{ fontSize: "13px", color: "#1b3a2e" }}>🍋 Lemon Squeezy</b>
+                  <small style={{ fontSize: "11px", color: "var(--sf-muted)" }}>MoR · Cards, Apple Pay &amp; PayPal</small>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGateway("stripe")}
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    border: gateway === "stripe" ? "2px solid #24483a" : "1px solid var(--sf-line)",
+                    background: gateway === "stripe" ? "#f4f8f4" : "#fff",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px",
+                  }}
+                >
+                  <b style={{ fontSize: "13px", color: "#1b3a2e" }}>💳 Credit / Debit Card</b>
+                  <small style={{ fontSize: "11px", color: "var(--sf-muted)" }}>Direct gateway processing</small>
                 </button>
               </div>
 
-              <div className="sf-payment-card-box">
-                <label>
-                  Card Number
-                  <input value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="4242 4242 4242 4242" required />
-                </label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                  <label>
-                    Expiration Date
-                    <input value={cardExp} onChange={(e) => setCardExp(e.target.value)} placeholder="MM/YY" required />
-                  </label>
-                  <label>
-                    Security CVC
-                    <input value={cardCvc} onChange={(e) => setCardCvc(e.target.value)} placeholder="123" required />
-                  </label>
+              {gateway === "lemonsqueezy" ? (
+                <div style={{ background: "#fcfbf7", border: "1px solid #e7e3d6", borderRadius: "8px", padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "16px" }}>🛡️</span>
+                    <strong style={{ fontSize: "13px", color: "#2d2a26" }}>Merchant of Record Protection</strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: "12px", color: "#66615b", lineHeight: 1.5 }}>
+                    Sales tax calculation, buyer protection, and global payment compliance handled seamlessly by Lemon Squeezy.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "8px" }}>
+                    <button type="button" className="sf-test-card-fill-btn" onClick={fillTestCard}>
+                      ⚡ Fill Test Card
+                    </button>
+                  </div>
+                  <div className="sf-payment-card-box">
+                    <label>
+                      Card Number
+                      <input value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="4242 4242 4242 4242" required />
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                      <label>
+                        Expiration Date
+                        <input value={cardExp} onChange={(e) => setCardExp(e.target.value)} placeholder="MM/YY" required />
+                      </label>
+                      <label>
+                        Security CVC
+                        <input value={cardCvc} onChange={(e) => setCardCvc(e.target.value)} placeholder="123" required />
+                      </label>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {err && (

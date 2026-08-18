@@ -1630,12 +1630,14 @@ function DomainsSection({ storeUrl, toast }: { storeUrl: string; toast: (s: stri
 
 /* ───────────────────────── Integrations ───────────────────────── */
 function IntegrationsSection({ toast }: { toast: (s: string) => void }) {
+  const [configuringLemonSqueezy, setConfiguringLemonSqueezy] = useState(false);
   const [configuringStripe, setConfiguringStripe] = useState(false);
   const [configuringResend, setConfiguringResend] = useState(false);
 
   const items = [
-    { name: "Stripe", detail: "Accept Apple Pay, Google Pay, and credit cards", status: "Connected · Ready", config: () => setConfiguringStripe(true) },
+    { name: "Lemon Squeezy", detail: "Merchant of Record · Global sales tax, VAT, invoicing, Apple Pay & PayPal", status: "Active · Primary", config: () => setConfiguringLemonSqueezy(true) },
     { name: "Resend", detail: "Deliver transactional order receipts and tracking emails", status: "Active · Ready", config: () => setConfiguringResend(true) },
+    { name: "Stripe", detail: "Accept Apple Pay, Google Pay, and credit cards directly", status: "Connected · Ready", config: () => setConfiguringStripe(true) },
     { name: "Shippo / EasyPost", detail: "Generate discounted shipping labels with 1 click", status: "Ready", config: () => toast("Shippo shipping label provider ready.") },
   ];
   return (
@@ -1670,6 +1672,16 @@ function IntegrationsSection({ toast }: { toast: (s: string) => void }) {
         </table>
       </section>
 
+      {configuringLemonSqueezy && (
+        <LemonSqueezyConfigModal
+          onClose={() => setConfiguringLemonSqueezy(false)}
+          onSaved={() => {
+            setConfiguringLemonSqueezy(false);
+            toast("Lemon Squeezy gateway settings saved.");
+          }}
+        />
+      )}
+
       {configuringStripe && (
         <StripeConfigModal
           onClose={() => setConfiguringStripe(false)}
@@ -1690,6 +1702,59 @@ function IntegrationsSection({ toast }: { toast: (s: string) => void }) {
         />
       )}
     </>
+  );
+}
+
+function LemonSqueezyConfigModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [apiKey, setApiKey] = useState("");
+  const [storeId, setStoreId] = useState("");
+  const [variantId, setVariantId] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+
+  return (
+    <Modal title="Lemon Squeezy Payment Gateway" onClose={onClose}>
+      <form onSubmit={(e) => { e.preventDefault(); onSaved(); }} className="dash-form">
+        <div style={{ background: "#fdf8ea", padding: "12px 14px", borderRadius: "8px", fontSize: "13px", color: "#634710", border: "1px solid #f2e3be" }}>
+          <b>🍋 Merchant of Record Gateway</b>
+          <p style={{ margin: "4px 0 0", fontSize: "12px", lineHeight: 1.4 }}>
+            Lemon Squeezy acts as your Merchant of Record, automatically calculating state sales tax and European VAT, providing hosted/overlay checkouts with Apple Pay, Google Pay, Cards, and PayPal.
+          </p>
+        </div>
+
+        <label>
+          Lemon Squeezy API Key
+          <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." />
+        </label>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <label>
+            Store ID
+            <input value={storeId} onChange={(e) => setStoreId(e.target.value)} placeholder="e.g. 12345" />
+          </label>
+          <label>
+            Default Variant ID
+            <input value={variantId} onChange={(e) => setVariantId(e.target.value)} placeholder="e.g. 67890" />
+          </label>
+        </div>
+
+        <label>
+          Webhook Signing Secret
+          <input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} placeholder="whsec_..." />
+        </label>
+
+        <div style={{ background: "#f8faf4", border: "1px solid #e1e7df", borderRadius: "8px", padding: "12px", fontSize: "12px" }}>
+          <b>Webhook Endpoint for Lemon Squeezy:</b>
+          <code style={{ display: "block", marginTop: "6px", padding: "6px 8px", background: "#fff", borderRadius: "4px", border: "1px solid #d0dad0" }}>
+            https://velour.live/api/lemonsqueezy/webhook
+          </code>
+        </div>
+
+        <div className="form-actions">
+          <button type="button" className="ghost" onClick={onClose}>Cancel</button>
+          <button className="button">Save Lemon Squeezy Settings</button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
