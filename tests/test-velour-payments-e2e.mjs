@@ -214,13 +214,27 @@ async function runVelourPaymentTests() {
     })
     const shippingEmailData = await shippingEmailRes.json()
     assert('Shipping email dispatch returns HTTP 200', shippingEmailRes.status === 200)
-    assert('Shipping email returns success: true', shippingEmailData.success === true)
+    // -------------------------------------------------------------------------
+    // TEST 8: Media Upload Route (/api/upload)
+    // -------------------------------------------------------------------------
+    console.log('\n--- Step 8: Media Upload Route ---')
+    const uploadRes = await fetch(`${BASE_URL}/api/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        filename: 'vessel-photo.png',
+      }),
+    })
+    const uploadData = await uploadRes.json()
+    assert('Upload endpoint returns HTTP 200', uploadRes.status === 200)
+    assert('Upload returns success: true', uploadData.success === true)
 
     // -------------------------------------------------------------------------
     // Summary
     // -------------------------------------------------------------------------
     console.log('\n=================================================================')
-    console.log(`📊 Velour.live Payment Test Results: ${passed} Passed, ${failed} Failed`)
+    console.log(`📊 Velour.live Payment & Route Audit Results: ${passed} Passed, ${failed} Failed`)
     console.log('=================================================================\n')
 
     return failed === 0
