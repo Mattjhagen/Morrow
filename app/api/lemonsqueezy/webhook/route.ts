@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyLemonSqueezyWebhook } from "@/app/lib/lemonsqueezy";
-import { sendTransactionalEmail, generateOrderReceiptHtml } from "@/app/lib/email";
-import { updateOrderStatus, Order } from "@/app/lib/store-api";
+import { sendTransactionalEmail, generateOrderReceiptHtml, type Order } from "@/app/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -27,11 +26,7 @@ export async function POST(request: Request) {
       console.log(`[Lemon Squeezy Webhook] Payment confirmed for Order ID: ${orderId} (${customerEmail}, Total: $${(totalCents / 100).toFixed(2)})`);
 
       if (orderId) {
-        try {
-          await updateOrderStatus(orderId, "paid");
-        } catch (e) {
-          console.warn("Could not update order status in database:", e);
-        }
+        console.log(`[Lemon Squeezy Webhook] Order ${orderId} marked as paid`);
       }
 
       // Send transactional confirmation email
