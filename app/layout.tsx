@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import VelourChat from "./components/VelourChat";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,7 +34,10 @@ export default function RootLayout({
           data-promotekit="74a9e110-f61e-487d-abae-0b56632481a7"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <VelourChat />
+      </body>
     </html>
   );
 }
