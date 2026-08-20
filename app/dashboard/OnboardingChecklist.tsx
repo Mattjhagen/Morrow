@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Discount, Product, Store, StoreTheme } from "../lib/store-api";
+import { DEFAULT_THEME, Discount, Product, Store, StoreTheme } from "../lib/store-api";
 
 export default function OnboardingChecklist({
   store,

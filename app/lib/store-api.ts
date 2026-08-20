@@ -948,6 +948,8 @@ export type ProductInput = {
   category?: string;
   status?: Product["status"];
   details?: Record<string, string>;
+  variants?: ProductVariant[];
+  gallery_urls?: string[];
 };
 
 export async function createProduct(storeId: string, input: ProductInput): Promise<Product> {
@@ -968,6 +970,8 @@ export async function createProduct(storeId: string, input: ProductInput): Promi
     rating: 5.0,
     review_count: 1,
     details: input.details,
+    variants: input.variants || [],
+    gallery_urls: input.gallery_urls || [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

@@ -439,12 +439,12 @@ export default function Home() {
       {accessOpen && (
         <VelourAccess
           onClose={() => setAccessOpen(false)}
-          onReady={(newStore) => {
+          onReady={(newStore?: Store) => {
             if (newStore) setActiveStore(newStore);
             setAccessOpen(false);
             setScreen("dashboard");
           }}
-          onQuickDemo={(demoStore) => {
+          onQuickDemo={(demoStore?: Store) => {
             if (demoStore) setActiveStore(demoStore);
             setAccessOpen(false);
             setScreen("dashboard");
@@ -529,8 +529,8 @@ function VelourAccess({
   onQuickDemo,
 }: {
   onClose: () => void;
-  onReady: () => void;
-  onQuickDemo: () => void;
+  onReady: (store?: Store) => void;
+  onQuickDemo: (store?: Store) => void;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -600,7 +600,10 @@ function VelourAccess({
     try {
       const response = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY },
+        headers: {
+          "Content-Type": "application/json",
+          ...(SUPABASE_KEY ? { apikey: SUPABASE_KEY } : {}),
+        },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           create_user: true,
