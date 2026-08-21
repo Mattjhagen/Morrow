@@ -19,16 +19,49 @@ About Velour:
 - Quick start: Explore the live Juniper Studio showcase or launch a fresh private store in seconds.
 - Platform: Built with high-speed edge architecture, elegant typography, and responsive commerce design.
 
-Tone:
-- Warm, articulate, concise (2 to 3 sentences), and supportive.
+CRITICAL INSTRUCTIONS:
+- You are in live chat mode. Respond directly to the user with your final message only.
+- NEVER output your thinking process, scratchpad, reasoning steps, analysis, or constraints check.
+- Keep responses concise (2 to 3 sentences), warm, and articulate.
 `;
 
 const FREE_MODELS = [
   "google/gemma-4-31b-it:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "openai/gpt-oss-20b:free",
+  "z-ai/glm-5.2:free",
   "nvidia/nemotron-3.5-lightning:free",
-  "deepseek/deepseek-r1:free",
 ];
+
+function cleanAiResponse(text: string, defaultFallback: string): string {
+  if (!text) return defaultFallback;
+
+  let cleaned = text.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, "").trim();
+
+  if (
+    /^Here'?s a thinking process/i.test(cleaned) ||
+    /^\*\*Thinking Process/i.test(cleaned) ||
+    /^1\.\s+\*\*Analyze/i.test(cleaned) ||
+    cleaned.toLowerCase().includes("thinking process:") ||
+    cleaned.includes("Check against constraints")
+  ) {
+    const parts = cleaned.split(/["“”]/);
+    const validQuotes: string[] = [];
+    for (let i = 1; i < parts.length; i += 2) {
+      const q = parts[i].trim();
+      if (q.length > 20 && !q.startsWith("Analyze") && !q.startsWith("Keep responses")) {
+        validQuotes.push(q);
+      }
+    }
+    if (validQuotes.length > 0) {
+      return validQuotes[validQuotes.length - 1];
+    }
+    return defaultFallback;
+  }
+
+  cleaned = cleaned.replace(/^(?:Assistant|Response|Velour|Answer):\s*/i, "").trim();
+  return cleaned || defaultFallback;
+}
 
 export async function POST(req: Request) {
   try {
@@ -64,11 +97,13 @@ export async function POST(req: Request) {
       ...FREE_MODELS.filter((m) => m !== preferredModel),
     ];
 
+    const defaultGreeting =
+      "Welcome to Velour. ✦ We make launching an artisanal e-commerce storefront effortless and beautiful. Explore our Juniper Studio showcase or start your own store today!";
+
     if (!apiKey) {
       return NextResponse.json(
         {
-          response:
-            "Welcome to Velour! ✦ We make launching an artisanal e-commerce storefront effortless and beautiful. Explore our Juniper Studio showcase or start your own studio store today!",
+          response: defaultGreeting,
           model: "simulated-concierge",
         },
         { headers: CORS_HEADERS }
@@ -92,15 +127,17 @@ export async function POST(req: Request) {
             messages,
             temperature: 0.7,
             max_tokens: 600,
+            include_reasoning: false,
           }),
         });
 
         if (res.ok) {
           const data = await res.json();
-          const reply = data.choices?.[0]?.message?.content?.trim();
-          if (reply) {
+          const rawReply = data.choices?.[0]?.message?.content?.trim();
+          if (rawReply) {
+            const cleanedReply = cleanAiResponse(rawReply, defaultGreeting);
             return NextResponse.json(
-              { response: reply, model },
+              { response: cleanedReply, model },
               { headers: CORS_HEADERS }
             );
           }
@@ -115,8 +152,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        response:
-          "Thank you for contacting Velour Concierge. You can explore our live studio showcase, customize your storefront theme, or connect Stripe payments from your dashboard!",
+        response: defaultGreeting,
         model: "concierge-fallback",
         warning: lastError,
       },
